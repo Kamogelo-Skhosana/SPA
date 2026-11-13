@@ -1,0 +1,34 @@
+import React from 'react';
+import { afterEach, expect, test, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import SettingsScreens from '../src/SettingsScreens';
+import { initialMandate } from '../src/settings';
+afterEach(cleanup);
+test('mandate requires confirmation, preserves state on failure and retries', async () => {
+  const saveMandate = vi.fn().mockRejectedValueOnce(new Error('offline')).mockImplementation(async m => m);
+  render(<SettingsScreens screen="mandate" adapter={{ saveMandate, rehearseWallet: vi.fn() }} />);
+  expect(screen.getByText('Cape Meridian Foods')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Pause mandate' }));
+  expect(saveMandate).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(saveMandate).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Pause mandate' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Confirm simulation' }));
+  await screen.findByRole('alert');
+  expect(screen.getByText('Active · simulated')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  await screen.findByText('Paused · simulated');
+  expect(saveMandate).toHaveBeenLastCalledWith({ ...initialMandate, active: false, version: 4 });
+  expect(screen.queryByRole('dialog')).toBeNull();
+});
+test('setup reports rehearsal without claiming ledger completion', async () => {
+  const rehearseWallet = vi.fn().mockRejectedValueOnce(new Error('failed')).mockResolvedValue(undefined);
+  render(<SettingsScreens screen="setup" adapter={{ saveMandate: vi.fn(), rehearseWallet }} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Rehearse setup' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Confirm simulation' }));
+  await screen.findByRole('alert');
+  expect(screen.getAllByText('Not verified on XRPL Testnet')).toHaveLength(4);
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  await waitFor(() => expect(screen.getAllByText('Rehearsed locally · simulated only')).toHaveLength(4));
+  expect(screen.getByText('Not connected to XRPL Testnet')).toBeTruthy();
+});
