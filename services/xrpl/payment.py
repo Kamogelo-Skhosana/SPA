@@ -140,12 +140,15 @@ class XRPLPaymentAdapter:
                 ledger_index = result.get("ledger_index") or result.get("validated_ledger_index")
                 validated = result.get("validated") is True
                 successful = getattr(response, "is_successful", lambda: False)()
+                engine_result = self._result_meta(result).get("TransactionResult")
+                if validated and engine_result:
+                    status = "validated" if successful and engine_result == "tesSUCCESS" else "failed"
+                else:
+                    status = "pending"
 
                 outcome: dict[str, Any] = {
                     "requestId": request_id,
-                    "status": "validated" if validated and successful else (
-                        "failed" if validated and not successful else "pending"
-                    ),
+                    "status": status,
                     "simulated": False,
                 }
                 if tx_hash:
@@ -153,10 +156,8 @@ class XRPLPaymentAdapter:
                 if ledger_index is not None:
                     outcome["ledgerIndex"] = ledger_index
                 if outcome["status"] == "failed":
-                    meta = self._result_meta(result)
-                    outcome["error"] = meta.get(
-                        "TransactionResult",
-                        result.get("engine_result_message", "XRPL transaction failed."),
+                    outcome["error"] = engine_result or result.get(
+                        "engine_result_message", "XRPL transaction failed."
                     )
                 self._results[idempotency_key] = outcome
                 return deepcopy(outcome)
@@ -190,12 +191,12 @@ class XRPLPaymentAdapter:
             validated = result.get("validated") is True
             meta = self._result_meta(result)
             engine_result = meta.get("TransactionResult")
-            if not validated:
+            if not validated or not engine_result:
                 status = "pending"
-            elif engine_result and engine_result != "tesSUCCESS":
-                status = "failed"
-            else:
+            elif engine_result == "tesSUCCESS":
                 status = "validated"
+            else:
+                status = "failed"
 
             output: dict[str, Any] = {
                 "status": status,
