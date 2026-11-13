@@ -3,6 +3,7 @@ import { filterRoutes, normalizeRoute, routes, type RoutePath } from "./navigati
 
 import Dashboard from "./Dashboard";
 import SettingsScreens from "./SettingsScreens";
+import { createApiWorkspace } from "./api-workspace";
 
 const symbols: Record<RoutePath, string> = {
   "/overview": "◫",
@@ -27,6 +28,10 @@ export default function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [workspace, setWorkspace] = useState("Demo workspace");
+  const [apiWorkspace] = useState(() => {
+    const endpoint = import.meta.env.VITE_SPA_API_URL?.trim();
+    return endpoint ? createApiWorkspace(endpoint) : null;
+  });
   const menuButton = useRef<HTMLButtonElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
   const searchButton = useRef<HTMLButtonElement>(null);
@@ -93,7 +98,7 @@ export default function App() {
       <div className="testnet-banner" role="status">
         <span className="banner-dot" aria-hidden="true" />
         XRPL Testnet environment <span className="banner-divider" aria-hidden="true">·</span>
-        <strong>Demo data is simulated</strong> — no real funds are moved
+        <strong>{apiWorkspace ? 'Connected API' : 'Demo data is simulated'}</strong>{apiWorkspace ? ' · payment status is shown from the backend' : ' — no real funds are moved'}
       </div>
       <div className="app-layout">
         {menuOpen && <button className="mobile-scrim" aria-label="Close navigation" onClick={() => setMenuOpen(false)} />}
@@ -111,7 +116,7 @@ export default function App() {
           <div className="nav-heading">YOUR WORKSPACE</div>
           {navigation}
           <div className="sidebar-foot">
-            <span className="environment-tag">● Simulated · Testnet</span>
+            <span className="environment-tag">● {apiWorkspace ? 'API connected' : 'Simulated · Testnet'}</span>
             <span className="sidebar-note">Operator dashboard MVP</span>
           </div>
         </aside>
@@ -135,9 +140,9 @@ export default function App() {
             <div className="page-heading">
               <div><p className="eyebrow">SPA / OPERATOR WORKSPACE</p><h1>{current.label}</h1>
                 <p className="page-description">{current.description}</p></div>
-              <span className="mode-pill">Simulated preview</span>
+              <span className="mode-pill">{apiWorkspace ? 'Connected API' : 'Simulated preview'}</span>
             </div>
-            {route === "/mandate" || route === "/setup" ? <SettingsScreens screen={route === "/mandate" ? "mandate" : "setup"} /> : <Dashboard screen={route === "/overview" ? "overview" : "payables"} />}
+            {route === "/mandate" || route === "/setup" ? <SettingsScreens screen={route === "/mandate" ? "mandate" : "setup"} adapter={apiWorkspace?.settings} /> : <Dashboard screen={route === "/overview" ? "overview" : "payables"} load={apiWorkspace?.loadDashboard} paymentAdapter={apiWorkspace?.payments} source={apiWorkspace ? 'api' : 'fixture'} />}
           </main>
         </div>
       </div>

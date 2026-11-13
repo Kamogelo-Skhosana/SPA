@@ -48,3 +48,16 @@ def test_mandate_updates_and_payment_confirmations_share_one_lock():
     # A PUT /mandate update cannot race with the policy recheck and reservation
     # performed by POST /payments/{id}/confirm.
     assert _lifecycle._lock is _lock
+
+
+def test_local_operator_ui_origin_can_call_api():
+    client = TestClient(app)
+    response = client.options(
+        "/overview",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
