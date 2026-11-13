@@ -113,7 +113,7 @@ def test_timeout_is_pending_and_never_retried_automatically(monkeypatch):
     second = adapter.submit_payment(payment_request(), idempotency_key="pay-1-key")
 
     assert first["status"] == "pending"
-    assert "reconcile" in first["error"]
+    assert "before retrying" in first["error"]
     assert first == second
     assert len(calls) == 1
 
@@ -215,3 +215,18 @@ def test_mainnet_disabled():
         seed="test-seed", client=FakeClient(), wallet=fake_wallet()
     )
     assert adapter.address == TEST_ADDRESS
+
+
+def test_idempotency_key_cannot_be_reused_for_changed_payment(monkeypatch):
+    monkeypatch.setattr(
+        xrpl.transaction,
+        "submit_and_wait",
+        lambda *_args, **_kwargs: FakeResponse({"hash": "ABC123", "validated": True}),
+    )
+    adapter = XRPLPaymentAdapter(
+        seed="test-seed", client=FakeClient(), wallet=fake_wallet()
+    )
+    adapter.submit_payment(payment_request(), idempotency_key="same-key")
+    changed = payment_request(amount="11.00")
+    with pytest.raises(XRPLPaymentError, match="different payment data"):
+        adapter.submit_payment(changed, idempotency_key="same-key")
