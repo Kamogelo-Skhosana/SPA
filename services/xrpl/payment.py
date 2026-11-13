@@ -37,6 +37,7 @@ class XRPLPaymentAdapter:
         self._lock = RLock()
         self._results: dict[str, dict[str, Any]] = {}
         self._request_keys: dict[str, str] = {}
+        self._request_payloads: dict[str, dict[str, Any]] = {}
 
     @property
     def client(self):
@@ -107,10 +108,14 @@ class XRPLPaymentAdapter:
         )
 
         with self._lock:
+            existing_payload = self._request_payloads.get(request_id)
+            if existing_payload is not None and existing_payload != request:
+                raise XRPLPaymentError("This request id is already bound to different payment data.")
             existing_key = self._request_keys.get(request_id)
             if existing_key and existing_key != idempotency_key:
                 raise XRPLPaymentError("This request id is already bound to another idempotency key.")
             self._request_keys[request_id] = idempotency_key
+            self._request_payloads[request_id] = deepcopy(request)
             if idempotency_key in self._results:
                 return deepcopy(self._results[idempotency_key])
 
@@ -153,7 +158,7 @@ class XRPLPaymentAdapter:
             except Exception as error:
                 # Submission may have reached the network before a timeout.
                 # Keep the pending result; reconcile by transaction lookup.
-                pending["error"] = f"Submission outcome unknown; reconcile before retrying: {error}"
+                pending["error"] = f"Submission outcome unknown; check ledger history before retrying: {error}"
                 self._results[idempotency_key] = pending
                 return deepcopy(pending)
 
