@@ -180,6 +180,42 @@ class PaymentLifecycle:
             return deepcopy(record)
 
 
+    def reconcile_payment(self, request_id: str) -> dict[str, Any]:
+        """Update a pending receipt only from a known transaction on the ledger."""
+        with self._lock:
+            record = self._records.get(request_id)
+            if record is None:
+                raise KeyError(request_id)
+            settlement = record["settlement"]
+            if record["status"] != "pending" or settlement is None:
+                return deepcopy(record)
+            tx_hash = settlement.get("txHash")
+            if not tx_hash or settlement.get("simulated") is not False:
+                # A timeout without a hash requires manual account-history
+                # investigation; never turn it into a fresh submission.
+                return deepcopy(record)
+            lookup = getattr(self.adapter, "lookup", None)
+            if lookup is None:
+                return deepcopy(record)
+            result = lookup(tx_hash)
+            status = result["status"]
+            if status == "pending":
+                return deepcopy(record)
+            record["settlement"] = {
+                "requestId": request_id, **result
+            }
+            amount = self._reservations.pop(request_id)
+            self._reserved_total -= amount
+            if status == "validated":
+                self.mandate["spent"] = str(
+                    Decimal(str(self.mandate["spent"])) + amount
+                )
+                record["status"] = "paid"
+            else:
+                record["status"] = "failed"
+            return deepcopy(record)
+
+
 def create_router(service: PaymentLifecycle):
     """Build the contract routes around a configured lifecycle service."""
     from fastapi import APIRouter, HTTPException
@@ -211,5 +247,14 @@ def create_router(service: PaymentLifecycle):
             return service.confirm_payment(request_id)
         except KeyError as error:
             raise HTTPException(status_code=404, detail="Payment not found.") from error
+
+    @router.post("/payments/{request_id}/reconcile")
+    def reconcile_payment(request_id: str) -> dict[str, Any]:
+        try:
+            return service.reconcile_payment(request_id)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="Payment not found.") from error
+        except ValueError as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
 
     return router
