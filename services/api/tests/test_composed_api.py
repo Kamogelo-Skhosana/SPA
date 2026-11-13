@@ -1,0 +1,44 @@
+"""Contract smoke test for the composed operator API."""
+from fastapi.testclient import TestClient
+
+from services.api.main import app
+
+
+def request_for(request_id, supplier="northstar-imports"):
+    return {
+        "id": request_id,
+        "supplierId": supplier,
+        "supplierName": "Northstar Imports",
+        "invoiceNumber": f"INV-{request_id}",
+        "amount": "25.00",
+        "currency": "RLUSD",
+        "destination": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+        "createdAt": "2026-11-13T12:00:00Z",
+    }
+
+
+def test_overview_and_payables_share_lifecycle_state():
+    client = TestClient(app)
+    created = client.post("/payables", json=request_for("contract-overview-1"))
+    assert created.status_code == 201
+    overview = client.get("/overview").json()
+    assert overview["simulated"] is True
+    assert overview["network"] == "XRPL Testnet"
+    assert any(item["request"]["id"] == "contract-overview-1"
+               for item in overview["payables"])
+    assert any(item["request"]["id"] == "contract-overview-1"
+               for item in client.get("/payables").json())
+
+
+def test_protected_request_never_has_settlement():
+    client = TestClient(app)
+    client.post("/payables", json=request_for(
+        "contract-protected-1", supplier="not-approved"
+    ))
+    decision = client.post("/agent/runs", json=request_for(
+        "contract-protected-1", supplier="not-approved"
+    )).json()
+    assert decision["outcome"] == "protected"
+    result = client.post("/payments/contract-protected-1/confirm").json()
+    assert result["status"] == "protected"
+    assert result["settlement"] is None
