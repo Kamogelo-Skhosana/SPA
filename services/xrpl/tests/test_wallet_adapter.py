@@ -30,11 +30,14 @@ class FakeClient:
         return self.responses.pop(0)
 
 
+def fake_wallet():
+    return SimpleNamespace(classic_address="rTestAddress")
+
+
 def test_wallet_status_reads_funded_xrp_balance():
     client = FakeClient([FakeResponse({"account_data": {"Balance": "2500000"}})])
-    adapter = XRPLTestnetAdapter(seed="test-seed", client=client, wallet=SimpleNamespace(classic_address="rTestAddress"))
+    adapter = XRPLTestnetAdapter(seed="test-seed", client=client, wallet=fake_wallet())
 
-    # Replace only wallet derivation; no key material is used in this unit test.
     assert adapter.wallet_status() == {
         "network": "testnet",
         "address": "rTestAddress",
@@ -46,8 +49,7 @@ def test_wallet_status_reads_funded_xrp_balance():
 
 def test_unfunded_wallet_is_a_normal_setup_state():
     client = FakeClient([FakeResponse({"error": "actNotFound"}, successful=False)])
-    adapter = XRPLTestnetAdapter(seed="test-seed", client=client)
-    adapter.wallet = SimpleNamespace(classic_address="rTestAddress")
+    adapter = XRPLTestnetAdapter(seed="test-seed", client=client, wallet=fake_wallet())
 
     result = adapter.wallet_status()
 
@@ -60,10 +62,8 @@ def test_rlusd_balance_matches_only_configured_issuer_and_currency():
         {"account": "rOtherIssuer", "currency": RLUSD_CURRENCY, "balance": "999"},
         {"account": TESTNET_ISSUER, "currency": RLUSD_CURRENCY, "balance": "12.5"},
     ]
-    adapter = XRPLTestnetAdapter(
-        seed="test-seed", client=FakeClient([FakeResponse({"lines": lines})]), wallet=SimpleNamespace(classic_address="rTestAddress")
-    )
-    adapter.wallet = SimpleNamespace(classic_address="rTestAddress")
+    client = FakeClient([FakeResponse({"lines": lines})])
+    adapter = XRPLTestnetAdapter(seed="test-seed", client=client, wallet=fake_wallet())
 
     result = adapter.rlusd_balance()
 
@@ -74,10 +74,8 @@ def test_rlusd_balance_matches_only_configured_issuer_and_currency():
 
 
 def test_absent_rlusd_trustline_returns_zero_balance():
-    adapter = XRPLTestnetAdapter(
-        seed="test-seed", client=FakeClient([FakeResponse({"lines": []})]), wallet=SimpleNamespace(classic_address="rTestAddress")
-    )
-    adapter.wallet = SimpleNamespace(classic_address="rTestAddress")
+    client = FakeClient([FakeResponse({"lines": []})])
+    adapter = XRPLTestnetAdapter(seed="test-seed", client=client, wallet=fake_wallet())
 
     result = adapter.rlusd_balance()
 
@@ -86,19 +84,15 @@ def test_absent_rlusd_trustline_returns_zero_balance():
 
 
 def test_rpc_error_is_not_reported_as_unfunded_wallet():
-    adapter = XRPLTestnetAdapter(
-        seed="test-seed",
-        client=FakeClient([FakeResponse({"error": "timeout"}, successful=False)]),
-        wallet=SimpleNamespace(classic_address="rTestAddress"),
-    )
-    adapter.wallet = SimpleNamespace(classic_address="rTestAddress")
+    client = FakeClient([FakeResponse({"error": "timeout"}, successful=False)])
+    adapter = XRPLTestnetAdapter(seed="test-seed", client=client, wallet=fake_wallet())
 
     with pytest.raises(XRPLAdapterError, match="timeout"):
         adapter.wallet_status()
 
 
 def test_invalid_or_nonpositive_trustline_limit_is_rejected():
-    adapter = XRPLTestnetAdapter(seed="test-seed", client=FakeClient([]), wallet=SimpleNamespace(classic_address="rTestAddress"))
+    adapter = XRPLTestnetAdapter(seed="test-seed", client=FakeClient([]), wallet=fake_wallet())
     with pytest.raises(ValueError):
         adapter.setup_rlusd_trustline("0")
 
@@ -110,7 +104,7 @@ def test_simulator_explicitly_labels_all_outputs():
     assert adapter.setup_rlusd_trustline()["simulated"] is True
 
 
-def test_adapter_requires_testnet_seed_and_never_has_mainnet_mode(monkeypatch):
+def test_adapter_requires_testnet_seed_and_rejects_mainnet_mode(monkeypatch):
     monkeypatch.setenv("XRPL_NETWORK", "mainnet")
     with pytest.raises(XRPLAdapterError, match="restricted"):
         XRPLTestnetAdapter(seed="test-seed")
