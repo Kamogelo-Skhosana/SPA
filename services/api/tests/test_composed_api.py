@@ -1,7 +1,7 @@
 """Contract smoke test for the composed operator API."""
 from fastapi.testclient import TestClient
 
-from services.api.main import app
+from services.api.main import _lifecycle, _lock, app
 
 
 def request_for(request_id, supplier="northstar-imports"):
@@ -42,3 +42,9 @@ def test_protected_request_never_has_settlement():
     result = client.post("/payments/contract-protected-1/confirm").json()
     assert result["status"] == "protected"
     assert result["settlement"] is None
+
+
+def test_mandate_updates_and_payment_confirmations_share_one_lock():
+    # A PUT /mandate update cannot race with the policy recheck and reservation
+    # performed by POST /payments/{id}/confirm.
+    assert _lifecycle._lock is _lock
