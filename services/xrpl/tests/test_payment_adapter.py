@@ -210,11 +210,12 @@ def test_simulator_marks_receipt_and_replays():
     assert first["txHash"].startswith("SIMULATED-")
 
 
-def test_mainnet_disabled():
-    adapter = XRPLPaymentAdapter(
-        seed="test-seed", client=FakeClient(), wallet=fake_wallet()
-    )
-    assert adapter.address == TEST_ADDRESS
+def test_mainnet_disabled(monkeypatch):
+    monkeypatch.setenv("XRPL_NETWORK", "mainnet")
+    with pytest.raises(XRPLPaymentError, match="restricted"):
+        XRPLPaymentAdapter(
+            seed="test-seed", client=FakeClient(), wallet=fake_wallet()
+        )
 
 
 def test_idempotency_key_cannot_be_reused_for_changed_payment(monkeypatch):
