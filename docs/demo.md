@@ -10,6 +10,12 @@ Northstar Imports is an SME operator workspace. Its owner delegates payable revi
 - 1:40–2:15. Run `req-protected-1047`. Kopano Packaging is not approved. Show the reason and no submit action. `req-over-limit-1049` provides a second refusal case.
 - 2:15–3:00. Show Payables and Setup, validated testnet evidence if available, and the system boundary. The agent proposes, gateway authorizes, operator confirms, and XRPL adapter signs.
 
+## Prepare the running backend
+
+The JSON fixture and screenshots show a 25,000 RLUSD cap, 100,000 total budget, and Cape Meridian as an approved supplier. The API starts with a smaller, generic in-memory mandate and an empty payable list. Before a simulated API rehearsal, explicitly update the mandate with the fixture values using `PUT /mandate` and `confirmed: true`, then create the requests through `POST /payables`. This setup is process-local and resets when the service restarts.
+
+The fixture destinations beginning with `rTEST_` are placeholders. Use them only for visual rehearsal. A live XRPL Testnet payment needs a real destination, a funded Testnet wallet, the RLUSD trustline and balance, and a validated ledger receipt. Never claim a fixture hash as ledger evidence.
+
 ## Rehearsal
 
 Use [the fixture](fixtures/demo.json) to rehearse every screen without live services. Its addresses are placeholders and must never be submitted. Replace fixture state with live API and validated XRPL Testnet data for the final settlement. If live settlement is unavailable, state that the outcome is simulated.
