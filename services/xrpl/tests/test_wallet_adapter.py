@@ -31,7 +31,7 @@ class FakeClient:
 
 
 def fake_wallet():
-    return SimpleNamespace(classic_address="rTestAddress")
+    return SimpleNamespace(classic_address="rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh")
 
 
 def test_wallet_status_reads_funded_xrp_balance():
@@ -40,7 +40,7 @@ def test_wallet_status_reads_funded_xrp_balance():
 
     assert adapter.wallet_status() == {
         "network": "testnet",
-        "address": "rTestAddress",
+        "address": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
         "funded": True,
         "xrpBalance": "2.5",
         "simulated": False,
