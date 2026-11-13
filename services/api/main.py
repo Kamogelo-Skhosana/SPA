@@ -1,6 +1,7 @@
 """FastAPI routes for mandate reads, updates, and deterministic policy evaluation."""
 from copy import deepcopy
 from datetime import datetime, timezone
+from decimal import Decimal
 from threading import RLock
 from typing import Any
 
@@ -75,7 +76,7 @@ def update_mandate(update: MandateUpdate) -> dict[str, Any]:
     if not update.confirmed:
         raise HTTPException(status_code=409, detail="Operator confirmation is required.")
     values = update.model_dump(by_alias=True, exclude={"confirmed"})
-    if float(values["spent"]) > float(values["totalBudget"]):
+    if Decimal(values["spent"]) > Decimal(values["totalBudget"]):
         raise HTTPException(status_code=422, detail="Spent amount cannot exceed total budget.")
     with _lock:
         values["version"] = _mandate["version"] + 1
