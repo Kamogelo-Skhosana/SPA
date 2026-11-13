@@ -103,7 +103,7 @@ export default function App() {
         {menuOpen && <button className="mobile-scrim" aria-label="Close navigation" onClick={() => setMenuOpen(false)} />}
         <aside id="workspace-sidebar" className={`sidebar ${menuOpen ? "sidebar-open" : ""}`} aria-label="Workspace sidebar">
           <a className="brand" href="#/overview" onClick={() => setMenuOpen(false)}>
-            <span className="brand-mark" aria-hidden="true">S</span>
+            <img className="brand-mark" src={`${import.meta.env.BASE_URL}spa-mark.svg`} alt="" width="44" height="44" />
             <span><strong>SPA</strong><small>Agentic finance</small></span>
           </a>
           <label className="workspace-label" htmlFor="workspace">WORKSPACE</label>
@@ -115,7 +115,6 @@ export default function App() {
           {navigation}
           <div className="sidebar-foot">
             <span className="environment-tag">● {apiWorkspace ? 'API connected' : 'Simulated · Testnet'}</span>
-            <span className="sidebar-note">Operator dashboard MVP</span>
           </div>
         </aside>
         <div className="content-shell">
@@ -136,7 +135,7 @@ export default function App() {
           </header>
           <main id="main-content" className="main-content">
             <div className="page-heading">
-              <div><p className="eyebrow">SPA / OPERATOR WORKSPACE</p><h1>{current.label}</h1>
+              <div><h1>{current.label}</h1>
                 <p className="page-description">{current.description}</p></div>
               <span className="mode-pill">{apiWorkspace ? 'Connected API' : 'Simulated preview'}</span>
             </div>
