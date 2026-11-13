@@ -43,6 +43,19 @@ export type ApiOverview = {
   simulated: boolean;
   network: string;
   balance?: { amount: string; currency: string; source: 'simulated' | 'testnet' } | null;
+  balanceError?: string | null;
+};
+export type XRPLStatus = {
+  network: 'testnet';
+  configured: boolean;
+  simulated: boolean;
+  message?: string;
+  wallet?: { network: string; address: string; funded: boolean; xrpBalance: string; simulated: boolean };
+  balance?: { network: string; address: string; issuer: string; currency: string; trustline: boolean; balance: string; simulated: boolean };
+};
+export type TrustlineResult = {
+  network: string; address: string; issuer: string; currency: string;
+  trustline: boolean; txHash?: string; simulated: boolean;
 };
 export class SpaApiError extends Error {
   status: number;
@@ -61,4 +74,6 @@ export function createSpaApi(options?: {
   confirmPayment(decision: ApiDecision, idempotencyKey: string): Promise<ApiPaymentRecord>;
   payment(requestId: string): Promise<ApiPaymentRecord>;
   reconcilePayment(requestId: string): Promise<ApiPaymentRecord>;
+  xrplStatus(): Promise<XRPLStatus>;
+  setupTrustline(): Promise<TrustlineResult>;
 };

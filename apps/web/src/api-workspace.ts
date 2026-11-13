@@ -86,6 +86,12 @@ export function createApiWorkspace(baseUrl: string, fetchImpl: typeof fetch = fe
 
   const settings: SettingsAdapter & { source: 'api' } = {
     source: 'api',
+    async getWalletStatus() {
+      return await client.xrplStatus();
+    },
+    async setupTrustline() {
+      return await client.setupTrustline();
+    },
     async loadMandate() {
       return await client.mandate() as Mandate;
     },

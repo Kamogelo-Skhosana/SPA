@@ -31,6 +31,8 @@ app.add_middleware(
     allow_headers=["Content-Type", "Idempotency-Key"],
 )
 _lock = RLock()
+_wallet_adapter_lock = RLock()
+_wallet_adapter: Any | None = None
 
 # In-memory fixture for the independently developed MVP. Persistence and
 # atomic budget reservation belong to the payable lifecycle workstream.
@@ -43,6 +45,11 @@ _mandate: dict[str, Any] = {
     "approvedSupplierIds": ["northstar-imports"],
     "expiresAt": "2027-01-01T00:00:00Z",
 }
+
+
+class TrustlineSetup(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    confirmed: bool = False
 
 
 class MandateUpdate(BaseModel):
@@ -99,10 +106,26 @@ def get_overview() -> dict[str, Any]:
     with _lock:
         mandate = deepcopy(_mandate)
     payables = _lifecycle.list_requests()
+    balance = None
+    balance_error = None
+    try:
+        wallet_adapter = _get_wallet_adapter()
+        if wallet_adapter is not None:
+            wallet_balance = wallet_adapter.rlusd_balance()
+            balance = {
+                "amount": str(wallet_balance.get("balance", "0")),
+                "currency": "RLUSD",
+                "source": "simulated" if wallet_balance.get("simulated") else "testnet",
+            }
+    except Exception:
+        # Keep the payables dashboard available while Setup reports wallet errors.
+        balance_error = "XRPL balance is temporarily unavailable."
     return {
         "mandate": mandate,
         "payables": payables,
         "budgetUsed": mandate["spent"],
+        "balance": balance,
+        "balanceError": balance_error,
         "simulated": isinstance(_settlement, StubSettlementAdapter)
             or os.getenv("XRPL_SIMULATED", "").lower() in {"1", "true", "yes"},
         "network": "XRPL Testnet",
@@ -134,3 +157,68 @@ def run_policy(request: dict[str, Any]) -> dict[str, Any]:
     with _lock:
         mandate = deepcopy(_mandate)
     return evaluate_payment(request, mandate, now=datetime.now(timezone.utc))
+
+
+def _get_wallet_adapter():
+    """Load the wallet reader only when setup is configured."""
+    global _wallet_adapter
+    simulated = os.getenv("XRPL_SIMULATED", "").strip().lower() in {"1", "true", "yes"}
+    if not os.getenv("XRPL_WALLET_SEED") and not simulated:
+        return None
+    with _wallet_adapter_lock:
+        if _wallet_adapter is None:
+            from services.xrpl.adapter import create_xrpl_adapter
+            _wallet_adapter = create_xrpl_adapter()
+        return _wallet_adapter
+
+
+@app.get("/xrpl/status")
+def xrpl_status() -> dict[str, Any]:
+    adapter = _get_wallet_adapter()
+    if adapter is None:
+        return {
+            "network": "testnet",
+            "configured": False,
+            "simulated": False,
+            "message": "Configure XRPL_WALLET_SEED in the backend environment.",
+        }
+    try:
+        wallet = adapter.wallet_status()
+        balance = adapter.rlusd_balance()
+        simulated = bool(wallet.get("simulated", False))
+        if bool(balance.get("simulated", False)) != simulated:
+            raise ValueError("Wallet and balance sources do not match.")
+        return {
+            "network": "testnet",
+            "configured": True,
+            "simulated": simulated,
+            "wallet": wallet,
+            "balance": balance,
+        }
+    except Exception as error:
+        raise HTTPException(
+            status_code=502,
+            detail=f"XRPL Testnet status could not be verified: {error}",
+        ) from error
+
+
+@app.post("/xrpl/trustline")
+def setup_xrpl_trustline(update: TrustlineSetup) -> dict[str, Any]:
+    if not update.confirmed:
+        raise HTTPException(status_code=409, detail="Operator confirmation is required.")
+    adapter = _get_wallet_adapter()
+    if adapter is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Configure XRPL_WALLET_SEED in the backend environment first.",
+        )
+    try:
+        result = adapter.setup_rlusd_trustline()
+        if not result.get("simulated") and not result.get("txHash"):
+            raise ValueError("Validated trustline setup did not return a transaction hash.")
+        return result
+    except Exception as error:
+        raise HTTPException(
+            status_code=502,
+            detail=f"RLUSD trustline setup failed: {error}",
+        ) from error

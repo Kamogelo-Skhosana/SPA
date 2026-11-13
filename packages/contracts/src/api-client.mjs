@@ -59,5 +59,9 @@ export function createSpaApi({ baseUrl = '', fetchImpl = fetch } = {}) {
     reconcilePayment: (requestId) => request(`/payments/${encodeURIComponent(requestId)}/reconcile`, {
       method: 'POST',
     }),
+    xrplStatus: () => request('/xrpl/status'),
+    setupTrustline: () => request('/xrpl/trustline', {
+      method: 'POST', body: JSON.stringify({ confirmed: true }),
+    }),
   };
 }
