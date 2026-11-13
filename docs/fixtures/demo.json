@@ -1,0 +1,71 @@
+{
+  "business": {
+    "id": "northstar-imports",
+    "name": "Northstar Imports",
+    "operator": "Kamo Mokoena",
+    "environment": "XRPL Testnet",
+    "dataMode": "simulated"
+  },
+  "mandate": {
+    "version": 3,
+    "active": true,
+    "perPaymentLimit": "25000.00",
+    "totalBudget": "100000.00",
+    "spent": "31250.00",
+    "approvedSupplierIds": [
+      "cape-meridian-foods",
+      "sable-office-supplies",
+      "umzi-logistics"
+    ],
+    "expiresAt": "2026-11-30T21:59:59Z"
+  },
+  "payables": [
+    {
+      "id": "req-approved-1048",
+      "supplierId": "cape-meridian-foods",
+      "supplierName": "Cape Meridian Foods",
+      "invoiceNumber": "INV-2026-1048",
+      "amount": "18450.00",
+      "currency": "RLUSD",
+      "destination": "rTEST_APPROVED_SUPPLIER_ADDRESS",
+      "createdAt": "2026-11-13T08:42:00Z",
+      "fixtureOutcome": "allowed",
+      "status": "awaiting_confirmation"
+    },
+    {
+      "id": "req-protected-1047",
+      "supplierId": "kopano-packaging",
+      "supplierName": "Kopano Packaging Co.",
+      "invoiceNumber": "INV-2026-1047",
+      "amount": "6200.00",
+      "currency": "RLUSD",
+      "destination": "rTEST_UNAPPROVED_SUPPLIER_ADDRESS",
+      "createdAt": "2026-11-13T07:18:00Z",
+      "fixtureOutcome": "protected",
+      "status": "protected",
+      "fixtureReasons": [
+        "Supplier is not on the approved list."
+      ]
+    },
+    {
+      "id": "req-over-limit-1049",
+      "supplierId": "cape-meridian-foods",
+      "supplierName": "Cape Meridian Foods",
+      "invoiceNumber": "INV-2026-1049",
+      "amount": "26000.00",
+      "currency": "RLUSD",
+      "destination": "rTEST_APPROVED_SUPPLIER_ADDRESS",
+      "createdAt": "2026-11-13T09:05:00Z",
+      "fixtureOutcome": "protected",
+      "status": "protected",
+      "fixtureReasons": [
+        "Amount exceeds the per-payment cap."
+      ]
+    }
+  ],
+  "balance": {
+    "amount": "82450.00",
+    "currency": "RLUSD",
+    "source": "simulated"
+  }
+}
