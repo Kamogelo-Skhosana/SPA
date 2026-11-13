@@ -1,4 +1,5 @@
 """FastAPI routes for mandate reads, updates, and deterministic policy evaluation."""
+import os
 from copy import deepcopy
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -9,6 +10,8 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .policy import evaluate_payment
+from .lifecycle import PaymentLifecycle, StubSettlementAdapter, create_router
+from .xrpl_bridge import create_xrpl_settlement_bridge
 
 app = FastAPI(title="SPA policy API", version="0.1.0")
 _lock = RLock()
@@ -63,6 +66,31 @@ class MandateUpdate(BaseModel):
         if any(not item.strip() for item in value) or len(value) != len(set(value)):
             raise ValueError("supplier IDs must be non-empty and unique")
         return value
+
+
+# A local launch without a Testnet seed is explicitly simulated. Live signing
+# requires XRPL_WALLET_SEED and the XRPL adapter in the same backend process.
+_use_xrpl = bool(os.getenv("XRPL_WALLET_SEED")) or os.getenv(
+    "XRPL_SIMULATED", ""
+).lower() in {"1", "true", "yes"}
+_settlement = create_xrpl_settlement_bridge() if _use_xrpl else StubSettlementAdapter()
+_lifecycle = PaymentLifecycle(_mandate, evaluate_payment, _settlement)
+app.include_router(create_router(_lifecycle))
+
+
+@app.get("/overview")
+def get_overview() -> dict[str, Any]:
+    with _lock:
+        mandate = deepcopy(_mandate)
+    payables = _lifecycle.list_requests()
+    return {
+        "mandate": mandate,
+        "payables": payables,
+        "budgetUsed": mandate["spent"],
+        "simulated": isinstance(_settlement, StubSettlementAdapter)
+            or os.getenv("XRPL_SIMULATED", "").lower() in {"1", "true", "yes"},
+        "network": "XRPL Testnet",
+    }
 
 
 @app.get("/mandate")
