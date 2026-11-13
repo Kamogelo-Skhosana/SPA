@@ -54,11 +54,14 @@ class PaymentLifecycle:
         mandate: dict[str, Any],
         evaluate: Callable[[dict[str, Any], dict[str, Any]], dict[str, Any]],
         adapter: SettlementAdapter | None = None,
+        lock: Any | None = None,
     ) -> None:
         self.mandate = mandate
         self.evaluate = evaluate
         self.adapter = adapter or StubSettlementAdapter()
-        self._lock = RLock()
+        # Share the API's mandate lock so confirmation and mandate updates are
+        # atomic with respect to one another as well as payable reservations.
+        self._lock = lock or RLock()
         self._records: dict[str, dict[str, Any]] = {}
         self._reservations: dict[str, Decimal] = {}
         self._reserved_total = Decimal("0")
