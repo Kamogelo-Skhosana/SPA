@@ -230,3 +230,17 @@ def test_idempotency_key_cannot_be_reused_for_changed_payment(monkeypatch):
     changed = payment_request(amount="11.00")
     with pytest.raises(XRPLPaymentError, match="different payment data"):
         adapter.submit_payment(changed, idempotency_key="same-key")
+
+
+def test_idempotency_key_cannot_cross_request_ids(monkeypatch):
+    monkeypatch.setattr(
+        xrpl.transaction,
+        "submit_and_wait",
+        lambda *_args, **_kwargs: FakeResponse({"hash": "ABC123", "validated": True}),
+    )
+    adapter = XRPLPaymentAdapter(
+        seed="test-seed", client=FakeClient(), wallet=fake_wallet()
+    )
+    adapter.submit_payment(payment_request("pay-1"), idempotency_key="shared-key")
+    with pytest.raises(XRPLPaymentError, match="another request id"):
+        adapter.submit_payment(payment_request("pay-2"), idempotency_key="shared-key")
