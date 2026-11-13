@@ -42,3 +42,7 @@ jobs:
               python -m pytest "services/$service/tests"
             fi
           done
+          if [ -d packages/integration/tests ]; then
+            python -m pip install pytest
+            python -m pytest packages/integration/tests
+          fi
