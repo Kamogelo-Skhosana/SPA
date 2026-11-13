@@ -176,3 +176,26 @@ def test_contract_router_returns_404_for_unknown_payment(mandate):
     app.include_router(create_router(PaymentLifecycle(mandate, evaluator)))
     response = TestClient(app).get("/payments/unknown")
     assert response.status_code == 404
+
+
+def test_ambiguous_adapter_error_keeps_reservation_and_never_resubmits(mandate):
+    class AmbiguousAdapter:
+        calls = 0
+
+        def submit(self, request, *, idempotency_key):
+            self.calls += 1
+            raise TimeoutError("RPC timed out after submission")
+
+    adapter = AmbiguousAdapter()
+    service = PaymentLifecycle(mandate, evaluator, adapter)
+    service.create_request(request_for("p-unknown", "40.00"))
+
+    first = service.confirm_payment("p-unknown")
+    second = service.confirm_payment("p-unknown")
+
+    assert first == second
+    assert first["status"] == "pending"
+    assert first["settlement"]["simulated"] is False
+    assert adapter.calls == 1
+    assert service._reserved_total == 40
+    assert mandate["spent"] == "0.00"
