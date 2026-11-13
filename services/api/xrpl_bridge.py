@@ -23,6 +23,20 @@ class XRPLSettlementBridge:
                 raise ValueError("Real validation requires a hash and ledger index.")
         return result
 
+    def lookup(self, tx_hash: str) -> dict[str, Any]:
+        if not tx_hash or tx_hash.startswith("SIMULATED-"):
+            raise ValueError("A real transaction hash is required for ledger reconciliation.")
+        result = self.payment_adapter.lookup_transaction(tx_hash)
+        if result.get("txHash") != tx_hash:
+            raise ValueError("XRPL lookup returned a different transaction.")
+        if result.get("simulated") is not False:
+            raise ValueError("Ledger reconciliation requires a real Testnet result.")
+        if result.get("status") not in {"pending", "validated", "failed"}:
+            raise ValueError("XRPL lookup returned an invalid settlement status.")
+        if result["status"] in {"validated", "failed"} and result.get("ledgerIndex") is None:
+            raise ValueError("A terminal ledger result requires a ledger index.")
+        return result
+
 
 def create_xrpl_settlement_bridge() -> XRPLSettlementBridge:
     """Load the Testnet adapter only when the integrated service starts."""
