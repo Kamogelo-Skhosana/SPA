@@ -5,7 +5,7 @@ from threading import Barrier
 import pytest
 
 from services.api.lifecycle import PaymentLifecycle, StubSettlementAdapter
-from services.api.policy import evaluate_payment
+from decimal import Decimal
 
 
 @pytest.fixture
@@ -35,9 +35,24 @@ def request_for(request_id, amount="60.00", supplier="supplier-a"):
 
 
 def evaluator(request, mandate):
-    return evaluate_payment(
-        request, mandate, now=datetime(2026, 11, 13, tzinfo=timezone.utc)
-    )
+    reasons = []
+    if not mandate["active"]:
+        reasons.append("Mandate is paused.")
+    if request["supplierId"] not in mandate["approvedSupplierIds"]:
+        reasons.append("Supplier is not approved.")
+    amount = Decimal(request["amount"])
+    if amount > Decimal(mandate["perPaymentLimit"]):
+        reasons.append("Payment exceeds per-payment limit.")
+    if Decimal(mandate["spent"]) + amount > Decimal(mandate["totalBudget"]):
+        reasons.append("Payment exceeds budget.")
+    if mandate["expiresAt"] <= "2026-11-13T00:00:00Z":
+        reasons.append("Mandate has expired.")
+    return {
+        "requestId": request["id"],
+        "outcome": "protected" if reasons else "allowed",
+        "reasons": reasons,
+        "mandateVersion": mandate["version"],
+    }
 
 
 def test_duplicate_request_is_idempotent_and_rejects_payload_changes(mandate):
