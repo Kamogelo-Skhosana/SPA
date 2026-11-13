@@ -42,3 +42,15 @@ test('surfaces API errors to the UI', async () => {
   await assert.rejects(api.mandate(), (error) =>
     error instanceof SpaApiError && error.status === 409 && error.message === 'Mandate changed');
 });
+
+test('creates a payable through the API contract', async () => {
+  let call;
+  const api = createSpaApi({ fetchImpl: async (url, options) => {
+    call = { url, options };
+    return { ok: true, json: async () => ({ status: 'pending' }) };
+  } });
+  await api.createPayable({ id: 'req-7' });
+  assert.equal(call.url, '/payables');
+  assert.equal(call.options.method, 'POST');
+  assert.equal(call.options.body, '{"id":"req-7"}');
+});
