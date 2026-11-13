@@ -1,14 +1,18 @@
 import demo from './fixtures/demo.json';
 import { requests, type PaymentAdapter, type PaymentRequest } from './payments';
 export type PayableStatus = 'paid' | 'pending' | 'protected' | 'awaiting_confirmation' | 'failed';
-export type Payable = Omit<PaymentRequest, 'status'> & { status: PayableStatus };
-export type DashboardData = { payables: Payable[]; balance: typeof demo.balance };
+export type Payable = PaymentRequest & { status: PayableStatus };
+export type DashboardData = { payables: Payable[]; balance: { amount: string; currency: string; source: string } | null; simulated: boolean };
 export type DashboardLoader = () => Promise<DashboardData>;
 export function fixtureDashboard(api: PaymentAdapter): DashboardLoader {
-  return async () => ({ balance: demo.balance, payables: await Promise.all(requests.map(async r => {
+  return async () => ({ balance: demo.balance, simulated: true, payables: await Promise.all(requests.map(async r => {
     const settlement = await api.payment(r.id);
     return { ...r, status: settlement?.status === 'validated' ? 'paid' : settlement?.status ?? r.status as PayableStatus };
   })) });
+}
+export function statusLabel(status: PayableStatus, simulated: boolean) {
+  const label: Record<PayableStatus, string> = { paid: 'Paid', pending: 'Pending', protected: 'Protected', awaiting_confirmation: 'Awaiting confirmation', failed: 'Failed' };
+  return simulated && ['paid', 'pending', 'failed'].includes(status) ? `${label[status]} · simulated` : label[status];
 }
 export const statusLabels: Record<PayableStatus, string> = { paid: 'Paid · simulated', pending: 'Pending · simulated', protected: 'Protected', awaiting_confirmation: 'Awaiting confirmation', failed: 'Failed · simulated' };
 export function filterPayables(payables: Payable[], query: string, status: string) {

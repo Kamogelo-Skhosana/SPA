@@ -1,21 +1,26 @@
 # SPA operator dashboard
 
-Fixture-backed React + TypeScript workspace. No live backend or wallet dependency.
+The React + TypeScript workspace runs in fixture mode by default. To connect it to the FastAPI service, start the backend from the repository root, then set the Vite API URL before starting the UI:
+
+```sh
+python -m pip install -r services/api/requirements.txt
+uvicorn services.api.main:app --reload --port 8000
+```
+
+In a second terminal:
 
 ```sh
 cd apps/web
 npm ci
-npm run dev
-npm run build
-npm test
+VITE_SPA_API_URL=http://localhost:8000 npm run dev
 ```
 
-Open the local Vite URL. Hash routes: `#/overview`, `#/payables`, `#/mandate`, `#/setup`. Use Ctrl/Cmd+K for page search; Escape closes search and mobile navigation.
+On PowerShell, set it with `$env:VITE_SPA_API_URL="http://localhost:8000"` before `npm run dev`. The API uses explicit CORS origins from `SPA_CORS_ORIGINS`; local Vite origins are allowed by default. Set that variable to a comma-separated list of exact origins for another deployment.
 
-Overview and Payables show simulated balance, search, status filters, and request details. Run the agent for INV-2026-1048, review its allowed decision, explicitly confirm the simulation, then check simulated status. Its paid status and illustrative receipt persist in browser local storage. INV-2026-1047 and INV-2026-1049 are protected and never offer submission. Simulation expiry uses the fixture mandate's real expiry date.
+When configured, the UI uses API data and does not silently fall back to fixtures if requests fail. A blank API returns an empty payables list; create requests with `POST /payables`. Use a real destination for Testnet configuration. Never submit fixture addresses. Without `XRPL_WALLET_SEED`, payment settlement is explicitly simulated. With a Testnet seed, the backend rechecks policy before its signing adapter is called.
 
-Mandate pause/resume and wallet rehearsal are local mock actions. Wallet steps never claim live funding, a trustline, or connectivity. No fixture destination can be used for a real payment. All receipts and balances are simulated, including those labeled validated within the simulation; none is XRPL Testnet evidence.
+API mode loads overview, payables, and mandate state, and routes agent decisions, explicit confirmation, and payment reconciliation through the shared client. If the API does not provide an account balance, the UI reports it as unavailable rather than substituting fixture balance data.
 
-Tests exercise keyboard focus, cancellation, policy refusal, forged approval rejection, explicit confirmation, persistence, failure/retry, dashboard updates, filters, loading, empty and error states. No screenshot assets were supplied in the repository; styling follows `docs/design.md`.
+Without `VITE_SPA_API_URL`, hash routes (`#/overview`, `#/payables`, `#/mandate`, `#/setup`) use the local fixture adapter. Use Ctrl/Cmd+K for page search; Escape closes search and mobile navigation. The approved fixture needs explicit operator confirmation; protected fixture requests never offer submission. All fixture receipts and balances are simulated, not XRPL Testnet evidence.
 
-Clear the `spa.simulated.settlements.v1` local-storage key in browser developer tools to reset payment rehearsals. Backend integration is tracked separately by #20.
+Clear the `spa.simulated.settlements.v1` local-storage key in browser developer tools to reset fixture rehearsals.
