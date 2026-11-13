@@ -38,6 +38,7 @@ class XRPLPaymentAdapter:
         self._results: dict[str, dict[str, Any]] = {}
         self._request_keys: dict[str, str] = {}
         self._request_payloads: dict[str, dict[str, Any]] = {}
+        self._key_requests: dict[str, str] = {}
 
     @property
     def client(self):
@@ -108,6 +109,9 @@ class XRPLPaymentAdapter:
         )
 
         with self._lock:
+            bound_request = self._key_requests.get(idempotency_key)
+            if bound_request is not None and bound_request != request_id:
+                raise XRPLPaymentError("This idempotency key is already bound to another request id.")
             existing_payload = self._request_payloads.get(request_id)
             if existing_payload is not None and existing_payload != request:
                 raise XRPLPaymentError("This request id is already bound to different payment data.")
@@ -116,6 +120,7 @@ class XRPLPaymentAdapter:
                 raise XRPLPaymentError("This request id is already bound to another idempotency key.")
             self._request_keys[request_id] = idempotency_key
             self._request_payloads[request_id] = deepcopy(request)
+            self._key_requests[idempotency_key] = request_id
             if idempotency_key in self._results:
                 return deepcopy(self._results[idempotency_key])
 
