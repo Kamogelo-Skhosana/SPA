@@ -22,13 +22,14 @@ class XRPLAdapterError(RuntimeError):
 class XRPLTestnetAdapter:
     """Connect to XRPL Testnet using a seed supplied through the environment."""
 
-    def __init__(self, seed: str | None = None, client: Any | None = None) -> None:
+    def __init__(self, seed: str | None = None, client: Any | None = None, wallet: Any | None = None) -> None:
         if os.getenv("XRPL_NETWORK", "testnet").lower() != "testnet":
             raise XRPLAdapterError("This adapter is restricted to XRPL Testnet.")
         self._seed = seed or os.getenv("XRPL_WALLET_SEED")
         if not self._seed:
             raise XRPLAdapterError("Set XRPL_WALLET_SEED in the service environment.")
         self._client = client
+        self._wallet = wallet
 
     @property
     def client(self):
@@ -39,12 +40,15 @@ class XRPLTestnetAdapter:
 
     @property
     def wallet(self):
+        if self._wallet is not None:
+            return self._wallet
         from xrpl.wallet import Wallet
         return Wallet.from_seed(self._seed)
 
     @property
     def address(self) -> str:
-        return self.wallet.classic_address
+        wallet = self.wallet
+        return getattr(wallet, "classic_address", None) or wallet.address
 
     @staticmethod
     def _result(response: Any, operation: str) -> dict[str, Any]:
