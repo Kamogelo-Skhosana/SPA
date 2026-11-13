@@ -5,11 +5,11 @@ import Dashboard from "./Dashboard";
 import SettingsScreens from "./SettingsScreens";
 import { createApiWorkspace } from "./api-workspace";
 
-const symbols: Record<RoutePath, string> = {
-  "/overview": "◫",
-  "/payables": "▤",
-  "/mandate": "◇",
-  "/setup": "⚙",
+const icons: Record<RoutePath, string> = {
+  "/overview": "M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z",
+  "/payables": "M6 3h12v18H6z M9 8h6 M9 12h6 M9 16h4",
+  "/mandate": "M12 3l8 3v6c0 4-4 7-8 9-4-2-8-5-8-9V6z M8 12l3 3 5-5",
+  "/setup": "M3 7h18v13H3z M3 7l14-4v4 M15 11h6v5h-6z",
 };
 
 function useRoute() {
@@ -85,7 +85,7 @@ export default function App() {
           aria-current={item.path === route ? "page" : undefined}
           className={item.path === route ? "nav-link active" : "nav-link"}
           onClick={() => setMenuOpen(false)}>
-          <span className="nav-icon" aria-hidden="true">{symbols[item.path]}</span>
+          <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={icons[item.path]} /></svg>
           <span>{item.label}</span>
         </a>
       ))}
@@ -111,7 +111,7 @@ export default function App() {
             <option>Demo workspace</option>
             <option disabled>Sandbox workspace (unavailable)</option>
           </select>
-          <div className="nav-heading">YOUR WORKSPACE</div>
+
           {navigation}
           <div className="sidebar-foot">
             <span className="environment-tag">● {apiWorkspace ? 'API connected' : 'Simulated · Testnet'}</span>
@@ -122,12 +122,16 @@ export default function App() {
             <button ref={menuButton} className="icon-button mobile-menu"
               aria-label={menuOpen ? "Close menu" : "Open menu"}
               aria-expanded={menuOpen} aria-controls="workspace-sidebar"
-              onClick={() => setMenuOpen((value) => !value)}>☰</button>
-            <div className="breadcrumb">Workspace <span aria-hidden="true">/</span> <strong>{current.label}</strong></div>
+              onClick={() => setMenuOpen((value) => !value)}>
+              <svg className="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+                <path d={menuOpen ? "m6 6 12 12M18 6 6 18" : "M4 6h16M4 12h16M4 18h16"} />
+              </svg>
+            </button>
+
             <div className="top-actions">
               <button ref={searchButton} className="search-trigger" onClick={() => setSearchOpen(true)}
                 aria-label="Search workspace pages">
-                <span aria-hidden="true">⌕</span> <span className="search-label">Search pages</span>
+                <svg className="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5" /><path d="m15 15 5 5" /></svg> <span className="search-label">Search pages</span>
                 <kbd>⌘ K</kbd>
               </button>
               <div className="avatar" aria-label="Operator account">OP</div>
@@ -135,9 +139,7 @@ export default function App() {
           </header>
           <main id="main-content" className="main-content">
             <div className="page-heading">
-              <div><h1>{current.label}</h1>
-                <p className="page-description">{current.description}</p></div>
-              <span className="mode-pill">{apiWorkspace ? 'Connected API' : 'Simulated preview'}</span>
+              <h1>{current.heading}</h1>
             </div>
             {route === "/mandate" || route === "/setup" ? <SettingsScreens key={route} screen={route === "/mandate" ? "mandate" : "setup"} adapter={apiWorkspace?.settings} /> : <Dashboard screen={route === "/overview" ? "overview" : "payables"} load={apiWorkspace?.loadDashboard} paymentAdapter={apiWorkspace?.payments} source={apiWorkspace ? 'api' : 'fixture'} />}
           </main>
@@ -147,7 +149,7 @@ export default function App() {
         if (event.target === event.currentTarget) setSearchOpen(false);
       }}>
         <section ref={searchDialog} className="search-dialog" role="dialog" aria-modal="true" aria-label="Search pages">
-          <div className="dialog-search"><span aria-hidden="true">⌕</span>
+          <div className="dialog-search"><svg className="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5" /><path d="m15 15 5 5" /></svg>
             <input ref={searchInput} aria-label="Search pages" placeholder="Find a page…"
               value={query} onChange={(event) => setQuery(event.target.value)}
               onKeyDown={(event) => {

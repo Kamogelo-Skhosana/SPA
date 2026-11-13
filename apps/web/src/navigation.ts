@@ -1,8 +1,8 @@
 export const routes = [
-  { path: "/overview", label: "Overview", description: "Your payment workspace" },
-  { path: "/payables", label: "Payables", description: "Review and manage requests" },
-  { path: "/mandate", label: "Mandate", description: "Manage spending protections" },
-  { path: "/setup", label: "Setup", description: "Configure your testnet workspace" },
+  { path: "/overview", label: "Overview", heading: "Payments overview", description: "Your payment workspace" },
+  { path: "/payables", label: "Payables", heading: "Supplier payment queue", description: "Review and manage requests" },
+  { path: "/mandate", label: "Mandate", heading: "Payment limits and approvals", description: "Manage spending protections" },
+  { path: "/setup", label: "Setup", heading: "XRPL Testnet wallet setup", description: "Configure your testnet workspace" },
 ] as const;
 
 export type RoutePath = (typeof routes)[number]["path"];

@@ -36,5 +36,5 @@ test('Enter opens the sole page match and closes search', async () => {
   fireEvent.change(input, { target: { value: 'payables' } });
   fireEvent.keyDown(input, { key: 'Enter' });
   expect(screen.queryByRole('dialog')).toBeNull();
-  await screen.findByRole('heading', { name: 'Payables' });
+  await screen.findByRole('heading', { name: 'Supplier payment queue' });
 });
