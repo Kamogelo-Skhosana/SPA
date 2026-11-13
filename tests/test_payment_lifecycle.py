@@ -129,3 +129,36 @@ def test_missing_request_raises_key_error(mandate):
     service = PaymentLifecycle(mandate, evaluator)
     with pytest.raises(KeyError):
         service.confirm_payment("missing")
+
+
+def test_contract_router_exposes_payable_reads_and_confirmation(mandate):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    service = PaymentLifecycle(mandate, evaluator, StubSettlementAdapter())
+    app = FastAPI()
+    app.include_router(__import__(
+        "services.api.lifecycle", fromlist=["create_router"]
+    ).create_router(service))
+    client = TestClient(app)
+
+    created = client.post("/payables", json=request_for("http-1", "25.00"))
+    assert created.status_code == 201
+    assert client.get("/payables").json()[0]["request"]["id"] == "http-1"
+    assert client.get("/payments/http-1").status_code == 200
+
+    confirmed = client.post("/payments/http-1/confirm")
+    assert confirmed.status_code == 200
+    assert confirmed.json()["status"] == "paid"
+    assert confirmed.json()["settlement"]["simulated"] is True
+
+
+def test_contract_router_returns_404_for_unknown_payment(mandate):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from services.api.lifecycle import create_router
+
+    app = FastAPI()
+    app.include_router(create_router(PaymentLifecycle(mandate, evaluator)))
+    response = TestClient(app).get("/payments/unknown")
+    assert response.status_code == 404
