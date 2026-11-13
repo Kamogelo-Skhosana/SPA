@@ -70,6 +70,7 @@ export function RequestFlow({ request, adapter, onUpdate, simulated = true }: { 
       setError(simulated ? 'The simulation could not complete. No ledger payment is claimed.' : 'The API action failed. The backend did not return a confirmed settlement.');
     } finally { setBusy(false); }
   }
+  const settlementSimulated = settlement?.simulated ?? simulated;
   const canConfirm = decision?.outcome === 'allowed' && (!settlement || (simulated && settlement.status === 'failed'));
   return <div className="request-flow" aria-busy={busy}>
     <dl className="details"><div><dt>Amount</dt><dd>{amount(request.amount)} {request.currency}</dd></div><div><dt>{simulated ? 'Destination · fixture placeholder' : 'Destination'}</dt><dd>{request.destination}</dd></div></dl>
@@ -78,10 +79,10 @@ export function RequestFlow({ request, adapter, onUpdate, simulated = true }: { 
     {!settlement && !error && <button className="button" disabled={busy} onClick={() => act('run')}>{decision ? 'Run policy check again' : 'Run agent'}</button>}
     {decision && <div className="decision"><h3>{decision.outcome === 'protected' ? 'Protected — submission blocked' : 'Allowed — awaiting operator confirmation'}</h3><p>Mandate version {decision.mandateVersion} · {simulated ? 'simulated decision' : 'API decision'}</p><ul>{decision.reasons.map(r => <li key={r}>{r}</li>)}</ul>{decision.outcome === 'protected' && <p>No signing or settlement action is available.</p>}</div>}
     {canConfirm && !confirm && <button className="button" disabled={busy || !!error} onClick={() => setConfirm(true)}>{settlement?.status === 'failed' ? 'Review retry confirmation' : 'Review confirmation'}</button>}
-    {settlement && <div className="receipt"><h3>{settlement.status === 'validated' ? (settlement.simulated ? 'Simulated validated receipt' : 'XRPL Testnet validated receipt') : settlement.status === 'pending' ? (settlement.simulated ? 'Simulation pending' : 'Settlement pending') : (settlement.simulated ? 'Simulation failed' : 'Testnet payment failed')}</h3>
-      <p>{settlement.simulated ? 'This result is simulated and is not ledger evidence.' : settlement.status === 'pending' ? 'The XRPL outcome is not yet validated. Retry will reconcile status without resubmitting.' : 'Confirmed by the XRPL Testnet ledger.'}</p>
-      {settlement.status === 'validated' && <dl className="details"><div><dt>{settlement.simulated ? 'Simulated transaction hash' : 'XRPL transaction hash'}</dt><dd>{settlement.txHash}</dd></div>{settlement.ledgerIndex !== undefined && <div><dt>{settlement.simulated ? 'Simulated ledger index' : 'Validated ledger index'}</dt><dd>{settlement.ledgerIndex}</dd></div>}</dl>}
-      {settlement.status === 'pending' && <button className="button secondary" disabled={busy} onClick={() => act('refresh')}>Recheck payment status</button>}
+    {settlement && <div className="receipt"><h3>{settlement.status === 'validated' ? (settlementSimulated ? 'Simulated validated receipt' : 'XRPL Testnet validated receipt') : settlement.status === 'pending' ? (settlementSimulated ? 'Simulation pending' : 'Settlement pending') : (settlementSimulated ? 'Simulation failed' : 'Testnet payment failed')}</h3>
+      <p>{settlementSimulated ? 'This result is simulated and is not ledger evidence.' : settlement.status === 'pending' ? 'The XRPL outcome is not yet validated. Retry will reconcile status without resubmitting.' : 'Confirmed by the XRPL Testnet ledger.'}</p>
+      {settlement.status === 'validated' && <dl className="details"><div><dt>{settlementSimulated ? 'Simulated transaction hash' : 'XRPL transaction hash'}</dt><dd>{settlement.txHash}</dd></div>{settlement.ledgerIndex !== undefined && <div><dt>{settlementSimulated ? 'Simulated ledger index' : 'Validated ledger index'}</dt><dd>{settlement.ledgerIndex}</dd></div>}</dl>}
+      {settlement.status === 'pending' && <button className="button secondary" disabled={busy} onClick={() => act('refresh')}>{simulated ? 'Check simulated status' : 'Recheck payment status'}</button>}
       {settlement.status === 'failed' && simulated && <button className="button secondary" disabled={busy} onClick={() => act('run')}>Recheck policy before retry</button>}
       {settlement.status === 'failed' && !simulated && <p>Do not resubmit this request ID. Review the failure and create a new payable before another attempt.</p>}
     </div>}
