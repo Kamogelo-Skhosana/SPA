@@ -15,5 +15,30 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - run: npm ci
       - run: npm run check
+      - run: npm test
+      - name: Check web workspace
+        shell: bash
+        run: |
+          if [ -f apps/web/package-lock.json ]; then
+            cd apps/web
+            npm ci
+            npm run build
+            npm test --if-present
+          fi
+      - name: Check Python workspaces
+        shell: bash
+        run: |
+          for service in api agent xrpl; do
+            if [ -f "services/$service/requirements.txt" ]; then
+              python -m pip install -r "services/$service/requirements.txt"
+            fi
+            if [ -d "services/$service/tests" ]; then
+              python -m pip install pytest
+              python -m pytest "services/$service/tests"
+            fi
+          done
