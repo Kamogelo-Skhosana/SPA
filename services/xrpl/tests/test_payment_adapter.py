@@ -56,7 +56,7 @@ def test_validated_payment_returns_hash_and_ledger(monkeypatch):
         "submit_and_wait",
         lambda tx, client, wallet: (
             calls.append(tx)
-            or FakeResponse({"hash": "ABC123", "validated": True, "ledger_index": 77})
+            or FakeResponse({"hash": "ABC123", "validated": True, "ledger_index": 77, "meta": {"TransactionResult": "tesSUCCESS"}})
         ),
     )
     adapter = XRPLPaymentAdapter(
@@ -82,7 +82,7 @@ def test_duplicate_submission_replays_cached_result(monkeypatch):
         "submit_and_wait",
         lambda tx, client, wallet: (
             calls.append(tx)
-            or FakeResponse({"hash": "ABC123", "validated": True})
+            or FakeResponse({"hash": "ABC123", "validated": True, "meta": {"TransactionResult": "tesSUCCESS"}})
         ),
     )
     adapter = XRPLPaymentAdapter(
