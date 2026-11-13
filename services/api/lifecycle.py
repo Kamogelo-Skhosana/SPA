@@ -143,23 +143,25 @@ class PaymentLifecycle:
             record["status"] = "pending"
             try:
                 settlement = self.adapter.submit(request, idempotency_key=request_id)
-            except Exception as error:
+            except Exception:
+                # An exception can occur after the network accepted the payment.
+                # Keep the reservation and never submit this request again blindly.
                 settlement = {
                     "requestId": request_id,
-                    "status": "failed",
-                    "simulated": True,
-                    "error": str(error) or "Settlement adapter failed.",
+                    "status": "pending",
+                    "simulated": False,
+                    "error": "Settlement outcome unknown; reconcile on the ledger.",
                 }
 
             status = settlement.get("status")
             if status not in {"pending", "validated", "failed"}:
                 settlement = {
                     "requestId": request_id,
-                    "status": "failed",
-                    "simulated": True,
-                    "error": "Settlement adapter returned an invalid status.",
+                    "status": "pending",
+                    "simulated": False,
+                    "error": "Settlement status unknown; reconcile on the ledger.",
                 }
-                status = "failed"
+                status = "pending"
 
             record["settlement"] = deepcopy(settlement)
             if status == "validated":
