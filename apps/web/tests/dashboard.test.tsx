@@ -6,7 +6,7 @@ import { createFixturePayments, requests } from '../src/payments';
 import { filterPayables, totalAmount, type DashboardData } from '../src/dashboard';
 import demo from '../src/fixtures/demo.json';
 afterEach(()=>{cleanup();localStorage.clear();});
-const data: DashboardData={balance:demo.balance,payables:requests.map((p,i)=>({...p,status:i===0?'paid':i===1?'pending':'protected'}))};
+const data: DashboardData={balance:demo.balance,simulated:true,payables:requests.map((p,i)=>({...p,status:i===0?'paid':i===1?'pending':'protected'}))};
 test('overview renders fixture balance and status rows, search and details',async()=>{
   render(<Dashboard screen="overview" load={async()=>data}/>);
   await screen.findByText('Recent requests');

@@ -2,10 +2,13 @@ import demo from './fixtures/demo.json';
 export const initialMandate = demo.mandate;
 export type Mandate = typeof initialMandate;
 export interface SettingsAdapter {
+  source?: 'fixture' | 'api';
+  loadMandate?: () => Promise<Mandate>;
   saveMandate: (mandate: Mandate) => Promise<Mandate>;
   rehearseWallet: () => Promise<void>;
 }
 export const fixtureSettings: SettingsAdapter = {
+  source: 'fixture',
   async saveMandate(mandate) { return structuredClone(mandate); },
   async rehearseWallet() { /* Local rehearsal only; no wallet is created. */ },
 };

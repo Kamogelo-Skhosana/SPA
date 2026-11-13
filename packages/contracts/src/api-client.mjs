@@ -56,5 +56,8 @@ export function createSpaApi({ baseUrl = '', fetchImpl = fetch } = {}) {
       });
     },
     payment: (requestId) => request(`/payments/${encodeURIComponent(requestId)}`),
+    reconcilePayment: (requestId) => request(`/payments/${encodeURIComponent(requestId)}/reconcile`, {
+      method: 'POST',
+    }),
   };
 }
