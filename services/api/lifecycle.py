@@ -173,3 +173,38 @@ class PaymentLifecycle:
                 record["status"] = "pending"
 
             return deepcopy(record)
+
+
+def create_router(service: PaymentLifecycle):
+    """Build the contract routes around a configured lifecycle service."""
+    from fastapi import APIRouter, HTTPException
+
+    router = APIRouter()
+
+    @router.get("/payables")
+    def list_payables() -> list[dict[str, Any]]:
+        return service.list_requests()
+
+    @router.post("/payables", status_code=201)
+    def create_payable(request: dict[str, Any]) -> dict[str, Any]:
+        try:
+            return service.create_request(request)
+        except ValueError as error:
+            status_code = 409 if "already exists" in str(error) else 422
+            raise HTTPException(status_code=status_code, detail=str(error)) from error
+
+    @router.get("/payments/{request_id}")
+    def get_payment(request_id: str) -> dict[str, Any]:
+        try:
+            return service.get_payment(request_id)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="Payment not found.") from error
+
+    @router.post("/payments/{request_id}/confirm")
+    def confirm_payment(request_id: str) -> dict[str, Any]:
+        try:
+            return service.confirm_payment(request_id)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="Payment not found.") from error
+
+    return router
