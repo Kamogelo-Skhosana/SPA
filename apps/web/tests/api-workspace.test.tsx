@@ -78,3 +78,23 @@ test('API mandate reads and confirmed updates use only writable fields', async (
     confirmed: true,
   });
 });
+
+
+test('API wallet setup reads status and submits TrustSet only after UI confirmation', async () => {
+  const status = {
+    network: 'testnet', configured: true, simulated: true,
+    wallet: { network: 'simulated', address: 'SIMULATED-WALLET', funded: true, xrpBalance: '100', simulated: true },
+    balance: { network: 'simulated', address: 'SIMULATED-WALLET', issuer: 'rIssuer', currency: 'RLUSD', trustline: false, balance: '0', simulated: true },
+  };
+  const result = { network: 'simulated', address: 'SIMULATED-WALLET', issuer: 'rIssuer', currency: 'RLUSD', trustline: true, simulated: true };
+  const fetchImpl = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+    if (String(url).endsWith('/xrpl/status')) return response(status);
+    if (String(url).endsWith('/xrpl/trustline')) return response(result);
+    throw new Error('Unexpected API request');
+  });
+  const workspace = createApiWorkspace('http://api.test', fetchImpl as typeof fetch);
+  expect(await workspace.settings.getWalletStatus?.()).toEqual(status);
+  expect(await workspace.settings.setupTrustline?.()).toEqual(result);
+  expect(fetchImpl.mock.calls[1][1]?.method).toBe('POST');
+  expect(fetchImpl.mock.calls[1][1]?.body).toBe(JSON.stringify({ confirmed: true }));
+});

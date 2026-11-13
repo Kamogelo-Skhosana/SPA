@@ -1,29 +1,46 @@
 # SPA Agentic Finance demo
 
-## Story and timing
+## Problem, user, and value
 
-Northstar Imports is an SME operator workspace. Its owner delegates payable review to SPA, which proposes a payment. A deterministic mandate gateway checks supplier, amount, budget, expiry, and active status. An operator confirms permitted payments before an XRPL Testnet adapter signs and submits them.
+SME finance operators spend time checking invoices, supplier eligibility, and payment limits. SPA prepares payable decisions while a deterministic mandate gateway checks supplier, amount, budget, expiry, and active status. The operator reviews the decision and explicitly confirms an allowed payment. This keeps delegated preparation separate from authority to sign.
 
-- 0:00–0:25. Show Overview, the XRPL Testnet banner, and the simulated balance.
-- 0:25–0:55. Open Mandate. Show Policy v3, 25,000 per-payment cap, 100,000 total budget, three approved suppliers, and 30 November 2026 expiry.
-- 0:55–1:40. Run `req-approved-1048`. Cape Meridian Foods is approved and 18,450 is within the cap. Show agent proposal, policy result, operator confirmation, then a validated XRPL Testnet transaction. Show a hash only after real validation.
-- 1:40–2:15. Run `req-protected-1047`. Kopano Packaging is not approved. Show the reason and no submit action. `req-over-limit-1049` provides a second refusal case.
-- 2:15–3:00. Show Payables and Setup, validated testnet evidence if available, and the system boundary. The agent proposes, gateway authorizes, operator confirms, and XRPL adapter signs.
+## Three-minute walkthrough
 
-## Prepare the running backend
+- **0:00–0:25** — Show Overview and identify whether the current run is fixture, simulated API, or connected to XRPL Testnet. Call out the balance source shown in the UI.
+- **0:25–0:55** — Open Mandate. Explain the supplier allowlist, payment cap, total budget, expiry, and pause control. API mode loads the backend mandate.
+- **0:55–1:40** — Run an approved request such as `req-approved-1048`. Show the agent proposal and policy result, then explicitly confirm. Only call it a Testnet settlement when a validated ledger receipt, transaction hash, and ledger index are visible.
+- **1:40–2:15** — Run `req-protected-1047` for an unapproved supplier and `req-over-limit-1049` for an over-cap amount. Show the exact policy reason and that no submit action is available.
+- **2:15–3:00** — Show Payables and Setup, then explain the boundary: the agent proposes, the backend rechecks policy, the operator confirms, and only the backend adapter can sign.
 
-The JSON fixture and screenshots show a 25,000 RLUSD cap, 100,000 total budget, and Cape Meridian as an approved supplier. The API starts with a smaller, generic in-memory mandate and an empty payable list. Before a simulated API rehearsal, explicitly update the mandate with the fixture values using `PUT /mandate` and `confirmed: true`, then create the requests through `POST /payables`. This setup is process-local and resets when the service restarts.
+## Run locally
 
-The fixture destinations beginning with `rTEST_` are placeholders. Use them only for visual rehearsal. A live XRPL Testnet payment needs a real destination, a funded Testnet wallet, the RLUSD trustline and balance, and a validated ledger receipt. Never claim a fixture hash as ledger evidence.
+From the repository root, install and start the API:
 
-## Rehearsal
+```sh
+python -m pip install -r services/api/requirements.txt
+uvicorn services.api.main:app --reload --port 8000
+```
 
-Use [the fixture](fixtures/demo.json) to rehearse every screen without live services. Its addresses are placeholders and must never be submitted. Replace fixture state with live API and validated XRPL Testnet data for the final settlement. If live settlement is unavailable, state that the outcome is simulated.
+In a second terminal, start the UI:
+
+```sh
+cd apps/web
+npm ci
+VITE_SPA_API_URL=http://localhost:8000 npm run dev
+```
+
+For fixture-only rehearsal, omit `VITE_SPA_API_URL`. For API simulation, set `XRPL_SIMULATED=true` in the backend environment before starting the API. Simulated values and actions are not ledger activity. The API's initial mandate and payable list are process-local; prepare demo requests using the API and expect them to reset when the backend restarts.
+
+## Testnet preparation and safety
+
+For an actual Testnet run, set `XRPL_NETWORK=testnet` and `XRPL_WALLET_SEED` only in the backend environment. Never put the seed in frontend configuration, source control, screenshots, or chat. Open Setup to inspect public wallet status. Fund the account with Testnet XRP, then explicitly confirm the RLUSD TrustSet. Create a payable only with a real, valid Testnet destination; fixture values beginning with `rTEST_` are placeholders and must never be submitted.
+
+A live approved payment needs a funded Testnet wallet, RLUSD issuer/trustline and balance, a real destination, and a validated ledger receipt. A protected request must stop before signing. If any prerequisite is absent, demonstrate the clearly labeled simulation and state that live settlement was not verified. Never present a simulated hash or balance as Testnet evidence.
 
 ## Track fit
 
-W3Node's Agentic Finance track calls for autonomous agents that transact, manage treasury, and execute financial decisions onchain. SPA demonstrates delegated payment review under an operator mandate and an onchain settlement step.
+The Agentic Finance track calls for agents that transact, manage treasury, and execute financial decisions onchain. SPA demonstrates autonomous payment preparation and decision support constrained by operator policy and human confirmation before an onchain action.
 
 ## Evidence
 
-Use [the checklist](evidence.md) during the final run.
+Use [the checklist](evidence.md) during the final run. Capture screenshots from the implementation being demonstrated and label each as fixture, simulated, or Testnet. Do not use mock evidence as proof of a live transaction.

@@ -61,3 +61,44 @@ def test_local_operator_ui_origin_can_call_api():
     )
     assert response.status_code == 200
     assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
+
+
+def test_xrpl_setup_reports_missing_backend_configuration(monkeypatch):
+    import services.api.main as api_main
+
+    monkeypatch.delenv("XRPL_WALLET_SEED", raising=False)
+    monkeypatch.delenv("XRPL_SIMULATED", raising=False)
+    monkeypatch.setattr(api_main, "_wallet_adapter", None)
+    response = TestClient(app).get("/xrpl/status")
+    assert response.status_code == 200
+    assert response.json()["configured"] is False
+    assert "XRPL_WALLET_SEED" in response.json()["message"]
+
+
+def test_trustline_setup_requires_confirmation_and_labels_simulation(monkeypatch):
+    import services.api.main as api_main
+    from services.xrpl.adapter import SimulatedXRPLAdapter
+
+    adapter = SimulatedXRPLAdapter()
+    monkeypatch.setattr(api_main, "_get_wallet_adapter", lambda: adapter)
+    client = TestClient(app)
+    denied = client.post("/xrpl/trustline", json={})
+    assert denied.status_code == 409
+    result = client.post("/xrpl/trustline", json={"confirmed": True})
+    assert result.status_code == 200
+    assert result.json()["simulated"] is True
+    assert result.json()["trustline"] is True
+
+
+def test_overview_uses_simulated_wallet_balance_without_claiming_ledger_evidence(monkeypatch):
+    import services.api.main as api_main
+    from services.xrpl.adapter import SimulatedXRPLAdapter
+
+    monkeypatch.setattr(api_main, "_get_wallet_adapter", SimulatedXRPLAdapter)
+    overview = TestClient(app).get("/overview").json()
+    assert overview["balance"] == {
+        "amount": "1000",
+        "currency": "RLUSD",
+        "source": "simulated",
+    }
+    assert overview["simulated"] is True
