@@ -244,3 +244,12 @@ def test_idempotency_key_cannot_cross_request_ids(monkeypatch):
     adapter.submit_payment(payment_request("pay-1"), idempotency_key="shared-key")
     with pytest.raises(XRPLPaymentError, match="another request id"):
         adapter.submit_payment(payment_request("pay-2"), idempotency_key="shared-key")
+
+
+def test_simulator_rejects_idempotency_payload_reuse():
+    adapter = SimulatedXRPLPaymentAdapter()
+    adapter.submit_payment(payment_request(), idempotency_key="sim-key")
+    with pytest.raises(XRPLPaymentError, match="different payment data"):
+        adapter.submit_payment(
+            payment_request(amount="10.26"), idempotency_key="sim-key"
+        )
