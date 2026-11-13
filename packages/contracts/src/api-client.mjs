@@ -33,6 +33,9 @@ export function createSpaApi({ baseUrl = '', fetchImpl = fetch } = {}) {
   return {
     overview: () => request('/overview'),
     payables: () => request('/payables'),
+    createPayable: (paymentRequest) => request('/payables', {
+      method: 'POST', body: JSON.stringify(paymentRequest),
+    }),
     mandate: () => request('/mandate'),
     updateMandate: (mandate) => request('/mandate', {
       method: 'PUT', body: JSON.stringify(mandate),
