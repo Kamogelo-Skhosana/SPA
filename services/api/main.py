@@ -74,7 +74,7 @@ _use_xrpl = bool(os.getenv("XRPL_WALLET_SEED")) or os.getenv(
     "XRPL_SIMULATED", ""
 ).lower() in {"1", "true", "yes"}
 _settlement = create_xrpl_settlement_bridge() if _use_xrpl else StubSettlementAdapter()
-_lifecycle = PaymentLifecycle(_mandate, evaluate_payment, _settlement)
+_lifecycle = PaymentLifecycle(_mandate, evaluate_payment, _settlement, lock=_lock)
 app.include_router(create_router(_lifecycle))
 
 
