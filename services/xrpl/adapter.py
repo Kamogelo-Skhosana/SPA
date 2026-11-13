@@ -75,7 +75,7 @@ class XRPLTestnetAdapter:
                         "xrpBalance": "0",
                         "simulated": False,
                     }
-                raise XRPLAdapterError(result.get("error_message", "Account lookup failed."))
+                raise XRPLAdapterError(result.get("error_message") or result.get("error") or "Account lookup failed.")
             drops = Decimal(str(result["account_data"]["Balance"]))
             return {
                 "network": "testnet",
