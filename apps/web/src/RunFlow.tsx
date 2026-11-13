@@ -58,7 +58,9 @@ export function RequestFlow({ request, adapter, onUpdate, simulated = true }: { 
           ? await adapter.confirmPayment(decision, `${simulated ? 'fixture' : 'spa'}:${request.id}`)
           : await adapter.payment(request.id, action === 'refresh');
         validateSettlement(s, request.id);
-        setSettlement(s); setConfirm(false); onUpdate?.();
+        setSettlement(s);
+        if (s) setDecision(null);
+        setConfirm(false); onUpdate?.();
       }
     } catch {
       if (action === 'confirm') {

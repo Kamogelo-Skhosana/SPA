@@ -27,7 +27,6 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [workspace, setWorkspace] = useState("Demo workspace");
   const [apiWorkspace] = useState(() => {
     const endpoint = import.meta.env.VITE_SPA_API_URL?.trim();
     return endpoint ? createApiWorkspace(endpoint) : null;
@@ -108,10 +107,9 @@ export default function App() {
             <span><strong>SPA</strong><small>Agentic finance</small></span>
           </a>
           <label className="workspace-label" htmlFor="workspace">WORKSPACE</label>
-          <select id="workspace" className="workspace-select" value={workspace}
-            onChange={(event) => setWorkspace(event.target.value)}>
+          <select id="workspace" className="workspace-select" defaultValue="Demo workspace">
             <option>Demo workspace</option>
-            <option>Sandbox workspace</option>
+            <option disabled>Sandbox workspace (unavailable)</option>
           </select>
           <div className="nav-heading">YOUR WORKSPACE</div>
           {navigation}
@@ -142,7 +140,7 @@ export default function App() {
                 <p className="page-description">{current.description}</p></div>
               <span className="mode-pill">{apiWorkspace ? 'Connected API' : 'Simulated preview'}</span>
             </div>
-            {route === "/mandate" || route === "/setup" ? <SettingsScreens screen={route === "/mandate" ? "mandate" : "setup"} adapter={apiWorkspace?.settings} /> : <Dashboard screen={route === "/overview" ? "overview" : "payables"} load={apiWorkspace?.loadDashboard} paymentAdapter={apiWorkspace?.payments} source={apiWorkspace ? 'api' : 'fixture'} />}
+            {route === "/mandate" || route === "/setup" ? <SettingsScreens key={route} screen={route === "/mandate" ? "mandate" : "setup"} adapter={apiWorkspace?.settings} /> : <Dashboard screen={route === "/overview" ? "overview" : "payables"} load={apiWorkspace?.loadDashboard} paymentAdapter={apiWorkspace?.payments} source={apiWorkspace ? 'api' : 'fixture'} />}
           </main>
         </div>
       </div>
@@ -152,7 +150,14 @@ export default function App() {
         <section ref={searchDialog} className="search-dialog" role="dialog" aria-modal="true" aria-label="Search pages">
           <div className="dialog-search"><span aria-hidden="true">⌕</span>
             <input ref={searchInput} aria-label="Search pages" placeholder="Find a page…"
-              value={query} onChange={(event) => setQuery(event.target.value)} />
+              value={query} onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" || event.nativeEvent.isComposing || matches.length !== 1) return;
+                event.preventDefault();
+                window.location.hash = matches[0].path;
+                setSearchOpen(false);
+                setQuery("");
+              }} />
             <button onClick={() => setSearchOpen(false)} aria-label="Close search">Esc</button>
           </div>
           <div className="search-results">

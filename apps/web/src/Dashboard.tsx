@@ -3,7 +3,7 @@ import demo from './fixtures/demo.json';
 import RunFlow from './RunFlow';
 import { createFixturePayments, type PaymentAdapter } from './payments';
 import { amount } from './settings';
-import { filterPayables, fixtureDashboard, statusLabel, statusLabels, totalAmount, type DashboardData, type DashboardLoader } from './dashboard';
+import { filterPayables, fixtureDashboard, statusLabel, statusLabels, totalAmount, type DashboardData, type DashboardLoader } from './dashboard-data';
 
 export default function Dashboard({ screen, load, paymentAdapter, source = 'fixture' }: {
   screen: 'overview' | 'payables';

@@ -1,6 +1,6 @@
 import { createSpaApi, type ApiPaymentRecord, type ApiSettlement, type PaymentRequest as ApiRequest } from '../../../packages/contracts/src/api-client.mjs';
 import type { PaymentAdapter, Decision, Settlement } from './payments';
-import type { DashboardData, DashboardLoader, Payable } from './dashboard';
+import type { DashboardData, DashboardLoader, Payable } from './dashboard-data';
 import type { Mandate, SettingsAdapter } from './settings';
 
 function toSettlement(record: ApiPaymentRecord, requestId: string): Settlement | null {
