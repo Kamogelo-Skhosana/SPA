@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { filterRoutes, normalizeRoute, routes, type RoutePath } from "./navigation";
 
-import RunFlow from "./RunFlow";
+import Dashboard from "./Dashboard";
 import SettingsScreens from "./SettingsScreens";
 
 const symbols: Record<RoutePath, string> = {
@@ -137,12 +137,7 @@ export default function App() {
                 <p className="page-description">{current.description}</p></div>
               <span className="mode-pill">Simulated preview</span>
             </div>
-            {route === "/mandate" || route === "/setup" ? <SettingsScreens screen={route === "/mandate" ? "mandate" : "setup"} /> : <><section className="placeholder-panel" aria-labelledby="screen-title">
-              <span className="placeholder-symbol" aria-hidden="true">{symbols[route]}</span>
-              <h2 id="screen-title">{current.label} screen</h2>
-              <p>This section is a fixture-backed placeholder. Its interactive functionality will be delivered in the corresponding frontend ticket.</p>
-              <span className="placeholder-status">Not connected to live services</span>
-            </section><RunFlow /></>}
+            {route === "/mandate" || route === "/setup" ? <SettingsScreens screen={route === "/mandate" ? "mandate" : "setup"} /> : <Dashboard screen={route === "/overview" ? "overview" : "payables"} />}
           </main>
         </div>
       </div>

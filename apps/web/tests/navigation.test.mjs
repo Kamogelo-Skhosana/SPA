@@ -20,7 +20,7 @@ test("navigation indicates active page and supports keyboard access", () => {
 });
 test("simulated and testnet states are labeled and responsive", () => {
   assert.match(shell, /Demo data is simulated/);
-  assert.match(shell, /Not connected to live services/);
+  assert.match(shell, /Simulated preview/);
   assert.match(css, /max-width:850px/);
   assert.match(css, /focus-visible/);
 });

@@ -6,16 +6,16 @@ function validateSettlement(s: Settlement | null, requestId: string) {
   if (s && (s.requestId !== requestId || !['pending', 'failed', 'validated'].includes(s.status) || (s.status === 'validated' && (!/^[A-F0-9]{64}$/.test(s.txHash ?? '') || !Number.isInteger(s.ledgerIndex))))) throw new Error('Invalid receipt');
   return s;
 }
-export default function RunFlow({ adapter, initialId }: { adapter?: PaymentAdapter; initialId?: string }) {
+export default function RunFlow({ adapter, initialId, onUpdate }: { adapter?: PaymentAdapter; initialId?: string; onUpdate?: () => void }) {
   const [api] = useState(() => adapter ?? createFixturePayments(window.localStorage));
   const [id, setId] = useState(initialId ?? requests[0].id);
   useEffect(() => { if (initialId) setId(initialId); }, [initialId]);
   return <section className="panel"><p className="eyebrow">OPERATOR REVIEW · SIMULATED</p><h2>Run payment agent</h2><p>Review a fixture request, inspect its policy decision, then explicitly confirm an allowed simulation.</p>
-    <label className="field">Payment request<select value={id} onChange={e => setId(e.target.value)}>{requests.map(r => <option key={r.id} value={r.id}>{r.invoiceNumber} · {r.supplierName}</option>)}</select></label>
-    <RequestFlow key={id} request={requests.find(r => r.id === id)!} adapter={api} />
+    {initialId ? <p><strong>{requests.find(r => r.id === id)?.invoiceNumber}</strong></p> : <label className="field">Payment request<select value={id} onChange={e => setId(e.target.value)}>{requests.map(r => <option key={r.id} value={r.id}>{r.invoiceNumber} · {r.supplierName}</option>)}</select></label>}
+    <RequestFlow key={id} request={requests.find(r => r.id === id)!} adapter={api} onUpdate={onUpdate} />
   </section>;
 }
-export function RequestFlow({ request, adapter }: { request: PaymentRequest; adapter: PaymentAdapter }) {
+export function RequestFlow({ request, adapter, onUpdate }: { request: PaymentRequest; adapter: PaymentAdapter; onUpdate?: () => void }) {
   const [decision, setDecision] = useState<Decision | null>(null);
   const [settlement, setSettlement] = useState<Settlement | null>(null);
   const [busy, setBusy] = useState(true);
@@ -39,7 +39,7 @@ export function RequestFlow({ request, adapter }: { request: PaymentRequest; ada
           ? await adapter.confirmPayment(decision, `fixture:${request.id}`)
           : await adapter.payment(request.id, action === 'refresh');
         validateSettlement(s, request.id);
-        setSettlement(s); setConfirm(false);
+        setSettlement(s); setConfirm(false); onUpdate?.();
       }
     } catch { setError('The simulation could not complete. Retry the action; no confirmed ledger payment is claimed.'); }
     finally { setBusy(false); }
