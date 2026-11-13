@@ -219,21 +219,41 @@ class SimulatedXRPLPaymentAdapter:
 
     def __init__(self) -> None:
         self._results: dict[str, dict[str, Any]] = {}
+        self._requests: dict[str, dict[str, Any]] = {}
+        self._request_keys: dict[str, str] = {}
+        self._key_requests: dict[str, str] = {}
+        self._lock = RLock()
 
     def submit_payment(
         self, request: dict[str, Any], *, idempotency_key: str
     ) -> dict[str, Any]:
-        if idempotency_key in self._results:
-            return deepcopy(self._results[idempotency_key])
-        digest = sha256(idempotency_key.encode("utf-8")).hexdigest()[:24]
-        result = {
-            "requestId": request["id"],
-            "status": "validated",
-            "txHash": f"SIMULATED-{digest}",
-            "simulated": True,
-        }
-        self._results[idempotency_key] = result
-        return deepcopy(result)
+        request_id = str(request.get("id", ""))
+        if not request_id or not idempotency_key or not idempotency_key.strip():
+            raise XRPLPaymentError("Request id and idempotency key are required.")
+        with self._lock:
+            if request_id in self._requests and self._requests[request_id] != request:
+                raise XRPLPaymentError("This request id is already bound to different payment data.")
+            prior_key = self._request_keys.get(request_id)
+            if prior_key and prior_key != idempotency_key:
+                raise XRPLPaymentError("This request id is already bound to another idempotency key.")
+            prior_request = self._key_requests.get(idempotency_key)
+            if prior_request and prior_request != request_id:
+                raise XRPLPaymentError("This idempotency key is already bound to another request id.")
+            if idempotency_key in self._results:
+                return deepcopy(self._results[idempotency_key])
+
+            digest = sha256(idempotency_key.encode("utf-8")).hexdigest()[:24]
+            result = {
+                "requestId": request_id,
+                "status": "validated",
+                "txHash": f"SIMULATED-{digest}",
+                "simulated": True,
+            }
+            self._requests[request_id] = deepcopy(request)
+            self._request_keys[request_id] = idempotency_key
+            self._key_requests[idempotency_key] = request_id
+            self._results[idempotency_key] = result
+            return deepcopy(result)
 
 
 def create_payment_adapter() -> XRPLPaymentAdapter | SimulatedXRPLPaymentAdapter:
