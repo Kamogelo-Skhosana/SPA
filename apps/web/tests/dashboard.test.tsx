@@ -1,0 +1,50 @@
+import React from 'react';
+import { afterEach, expect, test, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, within, waitFor } from '@testing-library/react';
+import Dashboard from '../src/Dashboard';
+import { createFixturePayments, requests } from '../src/payments';
+import { filterPayables, totalAmount, type DashboardData } from '../src/dashboard';
+import demo from '../src/fixtures/demo.json';
+afterEach(()=>{cleanup();localStorage.clear();});
+const data: DashboardData={balance:demo.balance,simulated:true,payables:requests.map((p,i)=>({...p,status:i===0?'paid':i===1?'pending':'protected'}))};
+test('overview renders fixture balance and status rows, search and details',async()=>{
+  render(<Dashboard screen="overview" load={async()=>data}/>);
+  await screen.findByText('Recent requests');
+  const table=screen.getByRole('table');
+  expect(within(table).getByText('Paid · simulated')).toBeTruthy();
+  expect(within(table).getByText('Pending · simulated')).toBeTruthy();
+  expect(within(table).getByText('Protected')).toBeTruthy();
+  fireEvent.change(screen.getByRole('searchbox',{name:'Search payables'}),{target:{value:'1049'}});
+  expect(within(table).queryByText('INV-2026-1048')).toBeNull();
+  fireEvent.click(screen.getByRole('button',{name:'View INV-2026-1049'}));
+  const detail=screen.getByRole('region',{name:'Request details'});
+  expect(within(detail).getByText('2026/11/13, 11:05:00 SAST')).toBeTruthy();
+  fireEvent.change(screen.getByRole('searchbox',{name:'Search payables'}),{target:{value:'no-supplier'}});
+  expect(screen.getByText('No matching requests')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button',{name:'Clear filters'}));
+  expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(4);
+  fireEvent.change(screen.getByLabelText('Status'),{target:{value:'paid'}});
+  expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(2);
+});
+test('loading, error retry and empty states are reachable',async()=>{
+  let resolve!: (d:DashboardData)=>void;
+  const load=vi.fn().mockRejectedValueOnce(new Error('offline')).mockImplementationOnce(()=>new Promise<DashboardData>(r=>{resolve=r;}));
+  render(<Dashboard screen="payables" load={load}/>);
+  await screen.findByRole('alert');fireEvent.click(screen.getByRole('button',{name:'Retry loading'}));
+  expect(screen.getByText('Loading payables…')).toBeTruthy();
+  resolve({...data,payables:[]});await screen.findByText('No payment requests yet');
+  expect(screen.queryByRole('table')).toBeNull();
+});
+test('confirmation refreshes overview totals and paid status',async()=>{
+  const api=createFixturePayments(localStorage,()=>new Date('2026-11-13T12:00:00Z'));
+  render(<Dashboard screen="overview" paymentAdapter={api}/>);await screen.findByText('Recent requests');
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Run agent'}).disabled).toBe(false));
+  fireEvent.click(screen.getByRole('button',{name:'Run agent'}));fireEvent.click(await screen.findByRole('button',{name:'Review confirmation'}));
+  fireEvent.click(screen.getByRole('button',{name:'Confirm simulation'}));await screen.findByText('Simulation pending');
+  fireEvent.click(screen.getByRole('button',{name:'Check simulated status'}));await screen.findByText('Simulated validated receipt');
+  await waitFor(()=>expect(within(screen.getByRole('table')).getByText('Paid · simulated')).toBeTruthy());
+});
+test('decimal totals remain exact and filters ignore case',()=>{
+  expect(totalAmount([{...data.payables[0],amount:'0.10'},{...data.payables[1],amount:'0.20'}])).toBe('0.30');
+  expect(filterPayables(data.payables,'CAPE','paid')).toHaveLength(1);
+});

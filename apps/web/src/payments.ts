@@ -1,13 +1,17 @@
 import demo from './fixtures/demo.json';
-export type PaymentRequest = typeof demo.payables[number];
+export type PaymentRequest = {
+  id: string; supplierId: string; supplierName: string; invoiceNumber: string;
+  amount: string; currency: string; destination: string; createdAt: string;
+  status?: 'paid' | 'pending' | 'protected' | 'awaiting_confirmation' | 'failed'; fixtureOutcome?: 'allowed' | 'protected'; fixtureReasons?: string[];
+};
 export type Decision = { requestId: string; outcome: 'allowed' | 'protected'; reasons: string[]; mandateVersion: number };
-export type Settlement = { requestId: string; status: 'pending' | 'validated' | 'failed'; txHash?: string; ledgerIndex?: number };
+export type Settlement = { requestId: string; status: 'pending' | 'validated' | 'failed'; txHash?: string; ledgerIndex?: number; simulated?: boolean };
 export interface PaymentAdapter {
   runAgent(request: PaymentRequest): Promise<Decision>;
   confirmPayment(decision: Decision, idempotencyKey: string): Promise<Settlement>;
   payment(requestId: string, refresh?: boolean): Promise<Settlement | null>;
 }
-export const requests = demo.payables;
+export const requests = demo.payables as PaymentRequest[];
 export function fixtureDecision(request: PaymentRequest, now = new Date()): Decision {
   const mandate = demo.mandate;
   const reasons: string[] = [];
@@ -44,7 +48,7 @@ export function createFixturePayments(storage: Pick<Storage, 'getItem' | 'setIte
       if (idempotencyKey !== `fixture:${request.id}`) throw new Error('A stable fixture retry key is required');
       const saved = read();
       if (saved[request.id] && saved[request.id].status !== 'failed') return saved[request.id];
-      const pending: Settlement = { requestId: request.id, status: 'pending' };
+      const pending: Settlement = { requestId: request.id, status: 'pending', simulated: true };
       saved[request.id] = pending; storage.setItem(key, JSON.stringify(saved));
       return pending;
     },
@@ -52,7 +56,7 @@ export function createFixturePayments(storage: Pick<Storage, 'getItem' | 'setIte
       const saved = read();
       const current = saved[requestId] ?? null;
       if (refresh && current?.status === 'pending') {
-        const receipt: Settlement = { requestId, status: 'validated', txHash: 'A'.repeat(64), ledgerIndex: 100001 };
+        const receipt: Settlement = { requestId, status: 'validated', txHash: 'A'.repeat(64), ledgerIndex: 100001, simulated: true };
         saved[requestId] = receipt; storage.setItem(key, JSON.stringify(saved)); return receipt;
       }
       return current;
