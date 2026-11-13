@@ -106,6 +106,14 @@ class XRPLPaymentAdapter:
                 issuer=TESTNET_ISSUER,
                 value=format(amount, "f"),
             ),
+            # Cap the sender-side spend at the same RLUSD amount. For this
+            # direct same-issuer transfer, that prevents path-based conversion
+            # from spending a different value.
+            send_max=IssuedCurrencyAmount(
+                currency=RLUSD_CURRENCY,
+                issuer=TESTNET_ISSUER,
+                value=format(amount, "f"),
+            ),
         )
 
         with self._lock:
