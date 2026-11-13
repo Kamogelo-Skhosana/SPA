@@ -2,7 +2,7 @@ import React from 'react';
 import { afterEach, expect, test } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import App from '../src/App';
-afterEach(cleanup);
+afterEach(() => { cleanup(); window.location.hash = ''; });
 test('search filters pages, traps focus and restores the opener', () => {
   render(<App />);
   const opener = screen.getByRole('button', { name: 'Search workspace pages' });
@@ -27,4 +27,14 @@ test('mobile menu exposes its controlled navigation and closes with Escape', () 
   fireEvent.keyDown(window, { key: 'Escape' });
   expect(button.getAttribute('aria-expanded')).toBe('false');
   expect(document.activeElement).toBe(button);
+});
+
+test('Enter opens the sole page match and closes search', async () => {
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Search workspace pages' }));
+  const input = screen.getByRole('textbox', { name: 'Search pages' });
+  fireEvent.change(input, { target: { value: 'payables' } });
+  fireEvent.keyDown(input, { key: 'Enter' });
+  expect(screen.queryByRole('dialog')).toBeNull();
+  await screen.findByRole('heading', { name: 'Payables' });
 });

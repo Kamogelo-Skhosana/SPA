@@ -3,7 +3,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import SettingsScreens from '../src/SettingsScreens';
 import { initialMandate } from '../src/settings';
-afterEach(cleanup);
+afterEach(() => { cleanup(); localStorage.clear(); });
 test('mandate requires confirmation, preserves state on failure and retries', async () => {
   const saveMandate = vi.fn().mockRejectedValueOnce(new Error('offline')).mockImplementation(async m => m);
   render(<SettingsScreens screen="mandate" adapter={{ saveMandate, rehearseWallet: vi.fn() }} />);
@@ -31,4 +31,14 @@ test('setup reports rehearsal without claiming ledger completion', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
   await waitFor(() => expect(screen.getAllByText('Rehearsed locally · simulated only')).toHaveLength(4));
   expect(screen.getByText('Not connected to XRPL Testnet')).toBeTruthy();
+});
+
+test('wallet rehearsal survives remount in fixture mode', async () => {
+  const view = render(<SettingsScreens screen="setup" />);
+  fireEvent.click(screen.getByRole('button', { name: 'Rehearse setup' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Confirm simulation' }));
+  await screen.findByRole('button', { name: 'Rehearse again' });
+  view.unmount();
+  render(<SettingsScreens screen="setup" />);
+  expect(screen.getAllByText('Rehearsed locally · simulated only')).toHaveLength(4);
 });

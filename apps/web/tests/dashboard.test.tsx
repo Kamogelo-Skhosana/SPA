@@ -3,7 +3,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, within, waitFor } from '@testing-library/react';
 import Dashboard from '../src/Dashboard';
 import { createFixturePayments, requests } from '../src/payments';
-import { filterPayables, totalAmount, type DashboardData } from '../src/dashboard';
+import { filterPayables, totalAmount, type DashboardData } from '../src/dashboard-data';
 import demo from '../src/fixtures/demo.json';
 afterEach(()=>{cleanup();localStorage.clear();});
 const data: DashboardData={balance:demo.balance,simulated:true,payables:requests.map((p,i)=>({...p,status:i===0?'paid':i===1?'pending':'protected'}))};
@@ -43,6 +43,7 @@ test('confirmation refreshes overview totals and paid status',async()=>{
   fireEvent.click(screen.getByRole('button',{name:'Confirm simulation'}));await screen.findByText('Simulation pending');
   fireEvent.click(screen.getByRole('button',{name:'Check simulated status'}));await screen.findByText('Simulated validated receipt');
   await waitFor(()=>expect(within(screen.getByRole('table')).getByText('Paid · simulated')).toBeTruthy());
+  expect(screen.getByRole('heading', { name: /64.000,00 RLUSD/ })).toBeTruthy();
 });
 test('decimal totals remain exact and filters ignore case',()=>{
   expect(totalAmount([{...data.payables[0],amount:'0.10'},{...data.payables[1],amount:'0.20'}])).toBe('0.30');

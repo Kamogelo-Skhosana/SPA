@@ -8,7 +8,7 @@ export default function SettingsScreens({ screen, adapter = fixtureSettings }: {
 }) {
   const [mandate, setMandate] = useState(initialMandate);
   const [loading, setLoading] = useState(screen === 'mandate' && Boolean(adapter.loadMandate));
-  const [loadedMandate, setLoadedMandate] = useState(screen !== 'mandate' || !adapter.loadMandate);
+  const [loadedMandate, setLoadedMandate] = useState(!adapter.loadMandate);
   const [walletStatus, setWalletStatus] = useState<WalletSetupStatus | null>(null);
   const [setupLoading, setSetupLoading] = useState(screen === 'setup' && Boolean(adapter.getWalletStatus));
   const [setupError, setSetupError] = useState('');
@@ -16,7 +16,9 @@ export default function SettingsScreens({ screen, adapter = fixtureSettings }: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [rehearsed, setRehearsed] = useState(false);
+  const [rehearsed, setRehearsed] = useState(() => {
+    try { return adapter.walletRehearsed?.() ?? false; } catch { return false; }
+  });
   const connected = adapter.source === 'api';
 
   useEffect(() => {
@@ -26,10 +28,10 @@ export default function SettingsScreens({ screen, adapter = fixtureSettings }: {
     adapter.loadMandate().then(value => {
       if (!value || !Array.isArray(value.approvedSupplierIds) || !Number.isInteger(value.version)) throw new Error('Invalid mandate contract');
       if (active) { setMandate(value); setLoadedMandate(true); }
-    }).catch(() => { if (active) setError('Mandate could not be loaded from the API.'); })
+    }).catch(() => { if (active) setError(connected ? 'Mandate could not be loaded from the API.' : 'The saved simulated mandate could not be loaded.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [adapter, screen]);
+  }, [adapter, connected, screen]);
 
   useEffect(() => {
     if (screen !== 'setup' || !adapter.getWalletStatus) return;
@@ -72,8 +74,8 @@ export default function SettingsScreens({ screen, adapter = fixtureSettings }: {
     } finally { setBusy(false); }
   }
 
-  if (connected && screen === 'mandate' && loading) return <section className="panel loading-panel" role="status">Loading mandate…</section>;
-  if (connected && screen === 'mandate' && !loadedMandate) return <section className="panel error" role="alert"><h2>Unable to load mandate</h2><p>{error}</p><button className="button" onClick={() => window.location.reload()}>Retry connection</button></section>;
+  if (screen === 'mandate' && loading) return <section className="panel loading-panel" role="status">Loading mandate…</section>;
+  if (screen === 'mandate' && !loadedMandate) return <section className="panel error" role="alert"><h2>Unable to load mandate</h2><p>{error}</p><button className="button" onClick={() => window.location.reload()}>Reload workspace</button></section>;
 
   return <div className="screen-stack">
     <div className="notice">{connected ? 'Connected API · Backend policy is authoritative' : 'Fixture preview · Not connected to live services'}</div>

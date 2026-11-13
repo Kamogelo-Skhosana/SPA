@@ -3,6 +3,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { RequestFlow } from '../src/RunFlow';
 import { createFixturePayments, requests, fixtureDecision } from '../src/payments';
+import { fixtureSettings } from '../src/settings';
 afterEach(() => {cleanup(); localStorage.clear();});
 const now = () => new Date('2026-11-13T12:00:00Z');
 function adapter() {return createFixturePayments(localStorage, now);}
@@ -23,7 +24,9 @@ test('approval needs explicit confirmation; pending and receipt survive remount'
   expect(confirm).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'Cancel'}));
   expect(confirm).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'Review confirmation'}));
   fireEvent.click(screen.getByRole('button',{name:'Confirm simulation'}));await screen.findByText('Simulation pending');
-  expect(confirm).toHaveBeenCalledTimes(1);view.unmount();
+  expect(confirm).toHaveBeenCalledTimes(1);
+  expect(screen.queryByText('Allowed — awaiting operator confirmation')).toBeNull();
+  view.unmount();
   render(<RequestFlow request={requests[0]} adapter={api}/>);await screen.findByText('Simulation pending');
   expect(screen.queryByRole('button',{name:'Review confirmation'})).toBeNull();
   fireEvent.click(screen.getByRole('button',{name:'Check simulated status'}));await screen.findByText('Simulated validated receipt');
@@ -53,4 +56,24 @@ test('failed settlement requires a fresh allowed decision before retry', async()
   expect(screen.queryByRole('button',{name:'Retry simulated payment'})).toBeNull();
   fireEvent.click(screen.getByRole('button',{name:'Recheck policy before retry'}));
   await screen.findByRole('button',{name:'Retry simulated payment'});
+});
+
+test('persisted pause blocks review and confirmation from a fresh adapter', async () => {
+  const request = requests[0];
+  const decision = await adapter().runAgent(request);
+  const initial = await fixtureSettings.loadMandate!();
+  const paused = await fixtureSettings.saveMandate({ ...initial, active: false, version: initial.version + 1 });
+  expect(await fixtureSettings.loadMandate!()).toEqual(paused);
+  expect(await adapter().runAgent(request)).toMatchObject({
+    outcome: 'protected', reasons: ['Mandate is paused.'], mandateVersion: paused.version,
+  });
+  await expect(adapter().confirmPayment(decision, `fixture:${request.id}`)).rejects.toThrow('Protected');
+  expect(await adapter().payment(request.id)).toBeNull();
+  await fixtureSettings.saveMandate({ ...paused, active: true, version: paused.version + 1 });
+  const fresh = await adapter().runAgent(request);
+  await expect(adapter().confirmPayment(decision, `fixture:${request.id}`)).rejects.toThrow('stale');
+  await adapter().confirmPayment(fresh, `fixture:${request.id}`);
+  expect((await fixtureSettings.loadMandate!()).spent).toBe('31250.00');
+  await adapter().payment(request.id, true);
+  expect((await fixtureSettings.loadMandate!()).spent).toBe('49700.00');
 });
